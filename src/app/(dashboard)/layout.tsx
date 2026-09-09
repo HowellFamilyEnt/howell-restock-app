@@ -24,6 +24,9 @@ export default async function DashboardLayout({
               <Link href="/restock" className="hover:text-gray-900">
                 Log Restock
               </Link>
+              <Link href="/settings" className="hover:text-gray-900">
+                Settings
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm text-gray-600">

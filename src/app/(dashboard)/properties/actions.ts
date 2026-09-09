@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { PropertyType } from "@prisma/client";
+import { syncHostawayListings } from "@/lib/hostaway";
 
 export async function createProperty(formData: FormData) {
   const name_address = String(formData.get("name_address") ?? "").trim();
@@ -43,4 +44,17 @@ export async function togglePropertyActive(propertyId: string, next: boolean) {
     data: { active: next },
   });
   revalidatePath("/properties");
+}
+
+export async function runHostawaySync(
+  _prevState: string | undefined,
+  _formData: FormData
+): Promise<string> {
+  try {
+    const result = await syncHostawayListings();
+    revalidatePath("/properties");
+    return `Synced: ${result.created} new, ${result.updated} updated (${result.totalListings} listings pulled).`;
+  } catch (error) {
+    return error instanceof Error ? `Sync failed: ${error.message}` : "Sync failed.";
+  }
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { createProperty, toggleUrgent, togglePropertyActive } from "./actions";
+import HostawaySyncButton from "./HostawaySyncButton";
 
 export default async function PropertiesPage() {
   const properties = await prisma.property.findMany({
@@ -9,9 +10,12 @@ export default async function PropertiesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Properties</h1>
-        <p className="text-sm text-gray-500">{properties.length} total</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Properties</h1>
+          <p className="text-sm text-gray-500">{properties.length} total</p>
+        </div>
+        <HostawaySyncButton />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">

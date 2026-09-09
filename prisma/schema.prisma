@@ -145,3 +145,16 @@ model User {
 
   @@map("users")
 }
+
+// Singleton row (id is always "hostaway") holding integration credentials
+// entered via the Settings page. Not committed anywhere in source - this is
+// the DB-backed alternative to the HOSTAWAY_ACCOUNT_ID / HOSTAWAY_API_KEY
+// env vars, which still take precedence if set (see src/lib/settings.ts).
+model IntegrationSettings {
+  id                  String   @id @default("hostaway")
+  hostaway_account_id String?
+  hostaway_api_key    String?
+  updatedAt           DateTime @updatedAt
+
+  @@map("integration_settings")
+}
