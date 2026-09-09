@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendWorkOrderLink } from "@/lib/notify";
 import { addUtcDays } from "@/lib/calendar";
 
-function baseUrl(): string {
+export function baseUrl(): string {
   return process.env.APP_URL || "http://localhost:3000";
 }
 

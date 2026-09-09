@@ -99,6 +99,26 @@ Built ahead of the original phased order at the user's explicit request
   manually-logged restocks. `qty_on_site` is captured but not currently
   used in any calculation — it's a snapshot for the admin to eyeball.
 
+### 3.9 Team access links
+A second, deliberately lower-security way into the app, built at the
+user's explicit request ("I don't need secure logins"). From Settings, the
+admin creates a named link (e.g. "Restocking Team") and checks which
+sections it can see — any of Properties, Items, Log Restock, Calendar,
+Work Orders, Team. **Settings itself is never an option and can never be
+granted** — it holds the Hostaway/Resend/Twilio credentials, so it always
+requires the real admin login regardless of what a link's permissions say.
+
+Visiting `/access/[token]` sets a long-lived cookie and drops the visitor
+into their first permitted section, with a nav bar showing only sections
+they're allowed. The link's name (not an email) shows where the admin's
+identity normally would, and "Exit" (clears the cookie) stands in for
+"Sign out". There's no password and no per-user identity beyond the link
+itself — anyone who has the URL has whatever access it grants, so treat
+each link like a shared key: create one per team/role rather than one per
+person, and delete/deactivate it from Settings if it's ever compromised.
+Deactivating (not deleting) is reversible if it turns out to be needed
+again; deleting is not.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -212,6 +232,15 @@ this becomes real database tables.
 | qty_on_site | int, nullable | filled in by whoever completes the row |
 | qty_added | int, nullable | filled in by whoever completes the row; drives the `restock_events` row created on completion |
 | completed | bool | |
+
+**access_links** (see section 3.9 — no relation to `users`)
+| field | type | notes |
+|---|---|---|
+| id | PK | |
+| name | text | shown in the nav in place of an email for this session |
+| token | text, unique | unguessable; grants access to `/access/[token]` with no login |
+| sections | text array | which of Properties/Items/Log Restock/Calendar/Work Orders/Team it can see; Settings can never appear here |
+| active | bool | deactivating is reversible; deleting is not |
 
 ## 5. Dashboard Logic (per property)
 

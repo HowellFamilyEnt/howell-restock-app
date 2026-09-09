@@ -240,3 +240,21 @@ model IntegrationSettings {
 
   @@map("integration_settings")
 }
+
+// A shareable, no-login URL (/access/[token]) that grants whichever
+// sections are listed in `sections` - see src/lib/accessLinks.ts for the
+// canonical section list. Deliberately cannot grant Settings access (that
+// always requires the real admin login, since it holds integration
+// credentials) - enforced in code, not just by omission from the Settings
+// page's checkboxes.
+model AccessLink {
+  id        String   @id @default(cuid())
+  name      String
+  token     String   @unique
+  sections  String[]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("access_links")
+}

@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
+import crypto from "crypto";
+import { ACCESS_SECTIONS } from "@/lib/accessLinks";
 
 // Generic save/clear for any subset of IntegrationSettings' credential
 // fields - used by the Hostaway, Email (Resend), and SMS (Twilio) sections
@@ -44,5 +46,33 @@ export async function clearCredentialFields(fields: string[]): Promise<void> {
     create: { id: "hostaway" },
   });
 
+  revalidatePath("/settings");
+}
+
+const VALID_SECTION_KEYS = new Set<string>(ACCESS_SECTIONS.map((s) => s.key));
+
+export async function createAccessLink(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const sections = formData.getAll("sections").map(String).filter((s) => VALID_SECTION_KEYS.has(s));
+
+  if (!name) throw new Error("Name is required.");
+  if (sections.length === 0) throw new Error("Pick at least one section.");
+
+  const token = crypto.randomBytes(24).toString("hex");
+
+  await prisma.accessLink.create({
+    data: { name, token, sections },
+  });
+
+  revalidatePath("/settings");
+}
+
+export async function toggleAccessLinkActive(linkId: string, next: boolean) {
+  await prisma.accessLink.update({ where: { id: linkId }, data: { active: next } });
+  revalidatePath("/settings");
+}
+
+export async function deleteAccessLink(linkId: string) {
+  await prisma.accessLink.delete({ where: { id: linkId } });
   revalidatePath("/settings");
 }

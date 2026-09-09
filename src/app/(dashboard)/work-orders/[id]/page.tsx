@@ -4,7 +4,7 @@ import Link from "next/link";
 import { workOrderLink } from "@/lib/workorders";
 import { completeWorkOrderItemAction } from "../actions";
 import WorkOrderItemRow from "@/components/WorkOrderItemRow";
-import CopyLinkButton from "./CopyLinkButton";
+import CopyLinkButton from "@/components/CopyLinkButton";
 import AssignmentForm from "./AssignmentForm";
 import SendButton from "./SendButton";
 import StatusControls from "./StatusControls";

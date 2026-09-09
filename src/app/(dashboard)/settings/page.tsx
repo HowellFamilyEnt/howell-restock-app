@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import CredentialForm from "./CredentialForm";
+import AccessLinksSection from "./AccessLinksSection";
+import { baseUrl } from "@/lib/workorders";
 
 function mask(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -9,6 +11,7 @@ function mask(value: string | null | undefined): string | null {
 
 export default async function SettingsPage() {
   const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  const accessLinks = await prisma.accessLink.findMany({ orderBy: { createdAt: "desc" } });
 
   const hostawayEnvConfigured = Boolean(process.env.HOSTAWAY_ACCOUNT_ID && process.env.HOSTAWAY_API_KEY);
   const emailEnvConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
@@ -99,6 +102,25 @@ export default async function SettingsPage() {
               placeholder: "+15551234567",
             },
           ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Team access links</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Shareable links that don&apos;t require a login — pick which sections each one can see (e.g.
+          a &ldquo;Restocking Team&rdquo; link limited to Calendar, Log Restock, and Work Orders).
+          Settings is never available through one of these links, no matter what&apos;s checked.
+        </p>
+        <AccessLinksSection
+          links={accessLinks.map((l) => ({
+            id: l.id,
+            name: l.name,
+            token: l.token,
+            sections: l.sections,
+            active: l.active,
+          }))}
+          baseUrl={baseUrl()}
         />
       </div>
     </div>
