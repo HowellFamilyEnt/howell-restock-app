@@ -6,6 +6,8 @@ import {
   updatePropertyDetails,
   updateMasterDoorCode,
   updateGeneralNotes,
+  updateAssignedTeamMember,
+  createWorkOrderAction,
 } from "./actions";
 
 export default async function PropertyDetailPage({
@@ -22,7 +24,16 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const items = await prisma.item.findMany({ orderBy: { name: "asc" } });
+  const [items, teamMembers, workOrders] = await Promise.all([
+    prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+    prisma.workOrder.findMany({
+      where: { property_id: property.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { assignedTeamMember: true },
+    }),
+  ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
 
   return (
@@ -138,6 +149,76 @@ export default async function PropertyDetailPage({
             Save
           </button>
         </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Assigned team member</h2>
+        <form
+          action={updateAssignedTeamMember.bind(null, property.id)}
+          className="flex items-end gap-3"
+        >
+          <div className="flex-1 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Team member</label>
+            <select
+              name="assignedTeamMemberId"
+              defaultValue={property.assignedTeamMemberId ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">Unassigned</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Save
+          </button>
+        </form>
+        <p className="mt-3 text-xs text-gray-400">
+          Work order links for this property go to whoever is assigned here. Manage people on the{" "}
+          <Link href="/team" className="underline">
+            Team
+          </Link>{" "}
+          page.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Work orders</h2>
+          <form action={createWorkOrderAction.bind(null, property.id)}>
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Create work order
+            </button>
+          </form>
+        </div>
+        {workOrders.length === 0 ? (
+          <p className="text-sm text-gray-400">No work orders yet for this property.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {workOrders.map((wo) => (
+              <li key={wo.id} className="flex items-center justify-between">
+                <span className="text-gray-600">
+                  {wo.createdAt.toISOString().slice(0, 10)} · {wo.assignedTeamMember?.name ?? "Unassigned"} ·{" "}
+                  <span className={wo.status === "Completed" ? "text-green-600" : "text-amber-600"}>
+                    {wo.status}
+                  </span>
+                </span>
+                <Link href={`/work-orders/${wo.id}`} className="font-medium text-gray-600 hover:underline">
+                  View →
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">

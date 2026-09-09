@@ -25,11 +25,8 @@ export default async function PropertiesPage() {
               <th className="px-4 py-2">Property</th>
               <th className="px-4 py-2">Address</th>
               <th className="px-4 py-2">Beds/Baths</th>
-              <th className="px-4 py-2">Type</th>
-              <th className="px-4 py-2">Units</th>
               <th className="px-4 py-2">Crew</th>
               <th className="px-4 py-2">Cadence (days)</th>
-              <th className="px-4 py-2">Source</th>
               <th className="px-4 py-2">Urgent</th>
               <th className="px-4 py-2">Active</th>
               <th className="px-4 py-2"></th>
@@ -49,11 +46,8 @@ export default async function PropertiesPage() {
                 <td className="whitespace-nowrap px-4 py-2 text-gray-600">
                   {property.bedrooms ?? "—"}bd / {property.bathrooms ?? "—"}ba
                 </td>
-                <td className="px-4 py-2 text-gray-600">{property.type}</td>
-                <td className="px-4 py-2 text-gray-600">{property.unit_count}</td>
                 <td className="px-4 py-2 text-gray-600">{property.assigned_cleaning_team ?? "—"}</td>
                 <td className="px-4 py-2 text-gray-600">{property.restock_frequency_days}</td>
-                <td className="px-4 py-2 text-gray-600">{property.source}</td>
                 <td className="px-4 py-2">
                   <form action={toggleUrgent.bind(null, property.id, !property.urgent_restock_requested)}>
                     <button
@@ -87,7 +81,7 @@ export default async function PropertiesPage() {
             ))}
             {properties.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                   No properties yet — add one below.
                 </td>
               </tr>

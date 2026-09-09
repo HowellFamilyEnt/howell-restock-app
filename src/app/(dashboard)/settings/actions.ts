@@ -2,20 +2,23 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@prisma/client";
 
-export async function saveHostawayCredentials(
+// Generic save/clear for any subset of IntegrationSettings' credential
+// fields - used by the Hostaway, Email (Resend), and SMS (Twilio) sections
+// on the Settings page. Blank fields mean "leave the existing value alone"
+// (inputs are never pre-filled with the real secret), so an empty submit
+// never wipes a saved credential.
+export async function saveCredentialFields(
+  fields: string[],
   _prevState: string | undefined,
   formData: FormData
 ): Promise<string> {
-  const accountId = String(formData.get("hostaway_account_id") ?? "").trim();
-  const apiKey = String(formData.get("hostaway_api_key") ?? "").trim();
-
-  // Blank fields mean "leave the existing value alone" - the API key input
-  // is never pre-filled with the real secret, so an empty submit shouldn't
-  // wipe it out.
-  const data: { hostaway_account_id?: string; hostaway_api_key?: string } = {};
-  if (accountId) data.hostaway_account_id = accountId;
-  if (apiKey) data.hostaway_api_key = apiKey;
+  const data: Record<string, string> = {};
+  for (const field of fields) {
+    const value = String(formData.get(field) ?? "").trim();
+    if (value) data[field] = value;
+  }
 
   if (Object.keys(data).length === 0) {
     return "Nothing to save.";
@@ -23,7 +26,7 @@ export async function saveHostawayCredentials(
 
   await prisma.integrationSettings.upsert({
     where: { id: "hostaway" },
-    update: data,
+    update: data as Prisma.IntegrationSettingsUpdateInput,
     create: { id: "hostaway", ...data },
   });
 
@@ -31,11 +34,15 @@ export async function saveHostawayCredentials(
   return "Saved.";
 }
 
-export async function clearHostawayCredentials(): Promise<void> {
+export async function clearCredentialFields(fields: string[]): Promise<void> {
+  const data: Record<string, null> = {};
+  for (const field of fields) data[field] = null;
+
   await prisma.integrationSettings.upsert({
     where: { id: "hostaway" },
-    update: { hostaway_account_id: null, hostaway_api_key: null },
+    update: data as Prisma.IntegrationSettingsUpdateInput,
     create: { id: "hostaway" },
   });
+
   revalidatePath("/settings");
 }

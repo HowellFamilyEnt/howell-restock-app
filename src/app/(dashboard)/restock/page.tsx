@@ -8,7 +8,7 @@ function todayIsoDate() {
 export default async function RestockPage() {
   const [properties, items, recentEvents] = await Promise.all([
     prisma.property.findMany({ where: { active: true }, orderBy: { name_address: "asc" } }),
-    prisma.item.findMany({ orderBy: { name: "asc" } }),
+    prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.restockEvent.findMany({
       orderBy: { date: "desc" },
       take: 20,
@@ -127,7 +127,9 @@ export default async function RestockPage() {
                   <td className="px-4 py-2 text-gray-600">{event.item.name}</td>
                   <td className="px-4 py-2 text-gray-600">{event.qty_delivered}</td>
                   <td className="px-4 py-2 text-gray-600">{event.urgent_flag ? "Yes" : ""}</td>
-                  <td className="px-4 py-2 text-gray-600">{event.loggedByUser.name}</td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {event.loggedByUser?.name ?? event.logged_by_name ?? "—"}
+                  </td>
                 </tr>
               ))}
               {recentEvents.length === 0 && (

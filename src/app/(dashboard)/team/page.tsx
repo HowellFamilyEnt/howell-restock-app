@@ -1,0 +1,93 @@
+import { prisma } from "@/lib/prisma";
+import { createTeamMember, toggleTeamMemberActive } from "./actions";
+import DeleteMemberButton from "./DeleteMemberButton";
+
+export default async function TeamPage() {
+  const members = await prisma.teamMember.findMany({ orderBy: { name: "asc" } });
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-lg font-semibold text-gray-900">Team</h1>
+        <p className="text-sm text-gray-500">
+          {members.length} total — assign members to properties to route work order links to them.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+            <tr>
+              <th className="px-4 py-2">Name</th>
+              <th className="px-4 py-2">Email</th>
+              <th className="px-4 py-2">Phone</th>
+              <th className="px-4 py-2">Active</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {members.map((member) => (
+              <tr key={member.id} className={member.active ? "" : "opacity-50"}>
+                <td className="px-4 py-2 font-medium text-gray-900">{member.name}</td>
+                <td className="px-4 py-2 text-gray-600">{member.email ?? "—"}</td>
+                <td className="px-4 py-2 text-gray-600">{member.phone ?? "—"}</td>
+                <td className="px-4 py-2">
+                  <form action={toggleTeamMemberActive.bind(null, member.id, !member.active)}>
+                    <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
+                      {member.active ? "Active" : "Inactive"}
+                    </button>
+                  </form>
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <DeleteMemberButton memberId={member.id} />
+                </td>
+              </tr>
+            ))}
+            {members.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                  No team members yet — add one below.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Add a team member</h2>
+        <form action={createTeamMember} className="grid grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Name</label>
+            <input name="name" required className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Email</label>
+            <input
+              name="email"
+              type="email"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Phone</label>
+            <input
+              name="phone"
+              type="tel"
+              placeholder="+15551234567"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-3">
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Add team member
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

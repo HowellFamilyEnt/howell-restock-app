@@ -56,6 +56,41 @@ Auto-pull STR listings from Hostaway so those properties don't need manual
 entry. Long-term rental and HUD-VASH units are never in Hostaway and stay
 manually entered. See section 6.
 
+### 3.8 Team & work orders
+Built ahead of the original phased order at the user's explicit request
+(see section 8).
+
+- **Team**: admin maintains a list of team members (name, email, phone).
+  Each property can have one assigned team member.
+- **Work orders**: a snapshot task for one property's upcoming restock
+  visit. Created either by hand (from the property page or the Work Orders
+  page) or by the daily sweep (see below). Each line item copies that
+  item's par level (`target_qty`) at creation time, so the work order stays
+  stable even if par levels change afterward.
+- **Crew access**: no crew login exists yet. Each work order gets an
+  unguessable `share_token` and is reachable at `/wo/[token]` with no
+  authentication — the token itself is the access control. That page shows
+  the property name/address/master door code and, per item: name, qty
+  needed, and fillable "qty on site" / "qty added" fields with a
+  per-row "Mark completed" button. Completing a row creates a
+  `restock_events` row (see below) and decrements central stock exactly
+  like the admin `/restock` form; the parent work order auto-closes once
+  every row is completed. This is a v1 tradeoff — a real crew-login system
+  (Field role, scoped mobile view) is more secure and matches the original
+  Phase 2 plan, but is a larger separate build.
+- **Daily sweep**: for every active property whose next scheduled restock
+  (last restock date + cadence) is tomorrow, and that doesn't already have
+  a work order for that date, create one and email/text the shareable link
+  to the assigned team member (Resend for email, Twilio for SMS — see
+  section 6). Currently triggered by hand via the "Send today's work
+  orders" button on the Work Orders page; true unattended daily automation
+  needs a cron trigger, which needs a hosting decision first (section 7).
+- **Reporting**: `qty_added` on each completed line item is what drives
+  central stock and `restock_events`, so "how much of X does property Y go
+  through" reporting can run off `restock_events` alone, the same as
+  manually-logged restocks. `qty_on_site` is captured but not currently
+  used in any calculation — it's a snapshot for the admin to eyeball.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -80,6 +115,7 @@ this becomes real database tables.
 | source | enum | Hostaway / Manual |
 | master_door_code | text, nullable | entered manually; never touched by Hostaway sync |
 | general_notes | text, nullable | free-form notes; entered manually; never touched by Hostaway sync |
+| assignedTeamMemberId | FK -> team_members, nullable | who work order links get sent to for this property |
 
 **items**
 | field | type | notes |
@@ -93,6 +129,7 @@ this becomes real database tables.
 | reorder_qty | int | |
 | preferred_vendor | text | |
 | unit_cost | decimal | |
+| active | bool | soft delete - hides from catalog/logging/par levels without losing restock history; hard delete only allowed when the item has no restock history, par levels, or work order references |
 
 **par_levels** (junction: property x item)
 | field | type | notes |
@@ -110,7 +147,8 @@ this becomes real database tables.
 | item_id | FK -> items | |
 | date | date | |
 | qty_delivered | int | |
-| logged_by | FK -> users | |
+| logged_by | FK -> users, nullable | null when logged via a work order's public link (no crew login) |
+| logged_by_name | text, nullable | free-text attribution when `logged_by` is null, e.g. the team member's name |
 | urgent_flag | bool | was this an early/urgent visit |
 | notes | text | |
 
@@ -134,6 +172,38 @@ this becomes real database tables.
 | role | enum | Admin / Field |
 | password_hash | text | |
 | assigned_properties | FK list | for Field role scoping |
+
+**team_members** (see section 3.8 — separate from `users`; no login)
+| field | type | notes |
+|---|---|---|
+| id | PK | |
+| name | text | |
+| email | text, nullable | |
+| phone | text, nullable | E.164, e.g. `+15551234567` |
+| active | bool | |
+
+**work_orders**
+| field | type | notes |
+|---|---|---|
+| id | PK | |
+| property_id | FK -> properties | |
+| assigned_team_member_id | FK -> team_members, nullable | snapshot of who it was sent to |
+| share_token | text, unique | unguessable; grants access to `/wo/[token]` with no login |
+| status | enum | Open / Completed |
+| scheduled_for | date, nullable | the restock-due date this work order corresponds to; used by the daily sweep to avoid creating duplicates |
+| sent_at | timestamp, nullable | when the link was actually emailed/texted |
+| created_by | FK -> users, nullable | null for sweep-created work orders |
+
+**work_order_items**
+| field | type | notes |
+|---|---|---|
+| id | PK | |
+| work_order_id | FK -> work_orders | |
+| item_id | FK -> items | |
+| qty_needed | int | snapshot of the property's par level at creation time |
+| qty_on_site | int, nullable | filled in by whoever completes the row |
+| qty_added | int, nullable | filled in by whoever completes the row; drives the `restock_events` row created on completion |
+| completed | bool | |
 
 ## 5. Dashboard Logic (per property)
 
@@ -175,6 +245,13 @@ count due soon, count items where `central_stock_qty <= reorder_threshold`.
 - In production this becomes a scheduled job (e.g. nightly), not something
   triggered by hand.
 
+Work order notifications (section 3.8) use the same env-var-or-Settings-page
+credential pattern: Resend for email (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`)
+and Twilio for SMS (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+`TWILIO_FROM_NUMBER`). Neither is required — a team member missing both a
+configured channel and their own email/phone just doesn't get a link sent,
+and the work order still gets created for the admin to share by hand.
+
 ## 7. Tech Stack — Recommendation, Not a Decision
 
 Discuss with the user before committing. A reasonable starting point given
@@ -200,6 +277,13 @@ complexity, one operator maintaining it):
 5. Photo/repair capture
 6. Hostaway sync as a scheduled job
 7. Vendor integration for semi- or fully-automated reordering (approval step first)
+
+Built out of order, at the user's explicit request, ahead of the phases
+above: item edit/deactivate/delete, Hostaway sync now also pulls
+address/bedrooms/bathrooms, master door code + general notes per property,
+and the Team & work order system (section 3.8) — including a crew-facing
+work order page, which is a lighter-weight stand-in for the full Field-role
+mobile view originally planned as Phase 2.
 
 ## 9. Open Decisions (ask the user, don't assume)
 

@@ -1,14 +1,33 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { createItem } from "./actions";
 
-export default async function ItemsPage() {
-  const items = await prisma.item.findMany({ orderBy: { name: "asc" } });
+export default async function ItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show?: string }>;
+}) {
+  const { show } = await searchParams;
+  const showInactive = show === "all";
+
+  const items = await prisma.item.findMany({
+    where: showInactive ? {} : { active: true },
+    orderBy: { name: "asc" },
+  });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Item catalog</h1>
-        <p className="text-sm text-gray-500">{items.length} total</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Item catalog</h1>
+          <p className="text-sm text-gray-500">{items.length} total</p>
+        </div>
+        <Link
+          href={showInactive ? "/items" : "/items?show=all"}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          {showInactive ? "Hide inactive" : "Show inactive"}
+        </Link>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -23,13 +42,14 @@ export default async function ItemsPage() {
               <th className="px-4 py-2">Reorder qty</th>
               <th className="px-4 py-2">Vendor</th>
               <th className="px-4 py-2">Unit cost</th>
+              <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
               const low = item.central_stock_qty <= item.reorder_threshold;
               return (
-                <tr key={item.id}>
+                <tr key={item.id} className={item.active ? "" : "opacity-50"}>
                   <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
                   <td className="px-4 py-2 text-gray-600">{item.category}</td>
                   <td className="px-4 py-2 text-gray-600">{item.unit_of_measure}</td>
@@ -41,12 +61,20 @@ export default async function ItemsPage() {
                   <td className="px-4 py-2 text-gray-600">{item.reorder_qty}</td>
                   <td className="px-4 py-2 text-gray-600">{item.preferred_vendor ?? "—"}</td>
                   <td className="px-4 py-2 text-gray-600">${item.unit_cost.toString()}</td>
+                  <td className="px-4 py-2 text-right">
+                    <Link
+                      href={`/items/${item.id}`}
+                      className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                    >
+                      Edit →
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {items.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
                   No items yet — add one below.
                 </td>
               </tr>

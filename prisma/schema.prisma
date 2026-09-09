@@ -39,6 +39,11 @@ enum NoteStatus {
   Resolved
 }
 
+enum WorkOrderStatus {
+  Open
+  Completed
+}
+
 model Property {
   id                       String         @id @default(cuid())
   name_address             String
@@ -55,11 +60,14 @@ model Property {
   active                   Boolean        @default(true)
   hostaway_listing_id      String?        @unique
   source                   PropertySource @default(Manual)
+  assignedTeamMemberId     String?
 
-  parLevels     ParLevel[]
-  restockEvents RestockEvent[]
-  notes         Note[]
-  assignedUsers User[]         @relation("AssignedProperties")
+  parLevels          ParLevel[]
+  restockEvents      RestockEvent[]
+  notes              Note[]
+  assignedUsers      User[]         @relation("AssignedProperties")
+  assignedTeamMember TeamMember?    @relation(fields: [assignedTeamMemberId], references: [id])
+  workOrders         WorkOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,9 +85,11 @@ model Item {
   reorder_qty       Int
   preferred_vendor  String?
   unit_cost         Decimal @db.Decimal(10, 2)
+  active            Boolean @default(true)
 
-  parLevels     ParLevel[]
-  restockEvents RestockEvent[]
+  parLevels      ParLevel[]
+  restockEvents  RestockEvent[]
+  workOrderItems WorkOrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -101,18 +111,19 @@ model ParLevel {
 }
 
 model RestockEvent {
-  id            String   @id @default(cuid())
-  property_id   String
-  item_id       String
-  date          DateTime
-  qty_delivered Int
-  logged_by     String
-  urgent_flag   Boolean  @default(false)
-  notes         String?
+  id             String   @id @default(cuid())
+  property_id    String
+  item_id        String
+  date           DateTime
+  qty_delivered  Int
+  logged_by      String?
+  logged_by_name String?
+  urgent_flag    Boolean  @default(false)
+  notes          String?
 
   property     Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
   item         Item     @relation(fields: [item_id], references: [id], onDelete: Cascade)
-  loggedByUser User     @relation(fields: [logged_by], references: [id])
+  loggedByUser User?    @relation(fields: [logged_by], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -135,6 +146,65 @@ model Note {
   @@map("notes")
 }
 
+model TeamMember {
+  id     String  @id @default(cuid())
+  name   String
+  email  String?
+  phone  String?
+  active Boolean @default(true)
+
+  assignedProperties Property[]
+  workOrders         WorkOrder[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("team_members")
+}
+
+// A snapshot task created for one property's upcoming restock visit. Line
+// items (WorkOrderItem) copy each item's par level at creation time so the
+// work order stays stable even if par levels change later. Reachable either
+// by an authenticated admin (/work-orders/[id]) or via share_token, an
+// unguessable link sent to the assigned team member with no login required
+// (/wo/[token]) - see src/app/wo/[token]/page.tsx.
+model WorkOrder {
+  id                      String          @id @default(cuid())
+  property_id             String
+  assigned_team_member_id String?
+  share_token             String          @unique
+  status                  WorkOrderStatus @default(Open)
+  scheduled_for           DateTime?
+  sent_at                 DateTime?
+  created_by              String?
+
+  property           Property        @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  assignedTeamMember TeamMember?     @relation(fields: [assigned_team_member_id], references: [id])
+  createdByUser      User?           @relation(fields: [created_by], references: [id])
+  items              WorkOrderItem[]
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@map("work_orders")
+}
+
+model WorkOrderItem {
+  id            String    @id @default(cuid())
+  work_order_id String
+  item_id       String
+  qty_needed    Int
+  qty_on_site   Int?
+  qty_added     Int?
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+
+  workOrder WorkOrder @relation(fields: [work_order_id], references: [id], onDelete: Cascade)
+  item      Item      @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@map("work_order_items")
+}
+
 model User {
   id            String   @id @default(cuid())
   name          String
@@ -144,6 +214,7 @@ model User {
 
   assignedProperties Property[]     @relation("AssignedProperties")
   restockEvents      RestockEvent[]
+  createdWorkOrders  WorkOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -159,6 +230,11 @@ model IntegrationSettings {
   id                  String   @id @default("hostaway")
   hostaway_account_id String?
   hostaway_api_key    String?
+  resend_api_key      String?
+  resend_from_email   String?
+  twilio_account_sid  String?
+  twilio_auth_token   String?
+  twilio_from_number  String?
   updatedAt           DateTime @updatedAt
 
   @@map("integration_settings")

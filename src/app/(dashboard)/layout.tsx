@@ -27,6 +27,12 @@ export default async function DashboardLayout({
               <Link href="/calendar" className="hover:text-gray-900">
                 Calendar
               </Link>
+              <Link href="/work-orders" className="hover:text-gray-900">
+                Work Orders
+              </Link>
+              <Link href="/team" className="hover:text-gray-900">
+                Team
+              </Link>
               <Link href="/settings" className="hover:text-gray-900">
                 Settings
               </Link>

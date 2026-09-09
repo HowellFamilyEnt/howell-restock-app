@@ -2,6 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { createWorkOrderForProperty } from "@/lib/workorders";
 
 export async function setParLevel(propertyId: string, itemId: string, formData: FormData) {
   const target_qty = Number(formData.get("target_qty"));
@@ -61,4 +64,26 @@ export async function updateGeneralNotes(propertyId: string, formData: FormData)
   });
 
   revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function updateAssignedTeamMember(propertyId: string, formData: FormData) {
+  const teamMemberId = String(formData.get("assignedTeamMemberId") ?? "").trim();
+
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { assignedTeamMemberId: teamMemberId || null },
+  });
+
+  revalidatePath("/properties");
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function createWorkOrderAction(propertyId: string) {
+  const session = await auth();
+  const workOrder = await createWorkOrderForProperty(propertyId, {
+    createdBy: session?.user?.id,
+  });
+
+  revalidatePath(`/properties/${propertyId}`);
+  redirect(`/work-orders/${workOrder.id}`);
 }
