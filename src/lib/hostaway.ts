@@ -1,10 +1,14 @@
 // Ports the merge semantics from integrations/hostaway_sync.py (unit-tested
 // there against mocked listings, never against a live account — see
 // docs/PROJECT_SPEC.md section 6). Existing Hostaway-sourced properties are
-// matched by hostaway_listing_id and only name_address/unit_count are
-// updated; everything else the user set (crew, cadence, urgent, active) is
-// left alone. Manually-entered properties (source = Manual) are never
-// touched because they're never matched by hostaway_listing_id.
+// matched by hostaway_listing_id and only name_address/unit_count/address/
+// bedrooms/bathrooms are updated; everything else the user set (crew,
+// cadence, urgent, active) is left alone. Manually-entered properties
+// (source = Manual) are never touched because they're never matched by
+// hostaway_listing_id.
+//
+// address/bedroomsNumber/bathroomsNumber field names confirmed against
+// Hostaway's public API docs, not yet verified against a live account.
 
 import { prisma } from "@/lib/prisma";
 import { getHostawayCredentials } from "@/lib/settings";
@@ -19,12 +23,17 @@ type HostawayListing = {
   city?: string | null;
   state?: string | null;
   zipcode?: string | null;
+  bedroomsNumber?: number | null;
+  bathroomsNumber?: number | null;
 };
 
 type MappedListing = {
   hostawayId: string;
   name: string;
   unitCount: number;
+  address: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
 };
 
 async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
@@ -93,6 +102,9 @@ function mapListing(listing: HostawayListing): MappedListing {
     hostawayId: String(listing.id),
     name: listing.name || address || `Hostaway Listing ${listing.id}`,
     unitCount: 1,
+    address: address || null,
+    bedrooms: typeof listing.bedroomsNumber === "number" ? listing.bedroomsNumber : null,
+    bathrooms: typeof listing.bathroomsNumber === "number" ? listing.bathroomsNumber : null,
   };
 }
 
@@ -130,6 +142,9 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
         data: {
           name_address: mapped.name,
           unit_count: mapped.unitCount,
+          address: mapped.address,
+          bedrooms: mapped.bedrooms,
+          bathrooms: mapped.bathrooms,
         },
       });
       updated += 1;
@@ -137,6 +152,9 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
       await prisma.property.create({
         data: {
           name_address: mapped.name,
+          address: mapped.address,
+          bedrooms: mapped.bedrooms,
+          bathrooms: mapped.bathrooms,
           type: "STR",
           unit_count: mapped.unitCount,
           assigned_cleaning_team: null,

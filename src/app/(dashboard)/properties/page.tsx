@@ -18,11 +18,13 @@ export default async function PropertiesPage() {
         <HostawaySyncButton />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
             <tr>
               <th className="px-4 py-2">Property</th>
+              <th className="px-4 py-2">Address</th>
+              <th className="px-4 py-2">Beds/Baths</th>
               <th className="px-4 py-2">Type</th>
               <th className="px-4 py-2">Units</th>
               <th className="px-4 py-2">Crew</th>
@@ -40,6 +42,12 @@ export default async function PropertiesPage() {
                   <Link href={`/properties/${property.id}`} className="hover:underline">
                     {property.name_address}
                   </Link>
+                </td>
+                <td className="max-w-[16rem] truncate px-4 py-2 text-gray-600" title={property.address ?? ""}>
+                  {property.address ?? "—"}
+                </td>
+                <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                  {property.bedrooms ?? "—"}bd / {property.bathrooms ?? "—"}ba
                 </td>
                 <td className="px-4 py-2 text-gray-600">{property.type}</td>
                 <td className="px-4 py-2 text-gray-600">{property.unit_count}</td>
@@ -79,7 +87,7 @@ export default async function PropertiesPage() {
             ))}
             {properties.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={11} className="px-4 py-6 text-center text-gray-400">
                   No properties yet — add one below.
                 </td>
               </tr>
@@ -96,6 +104,33 @@ export default async function PropertiesPage() {
             <input
               name="name_address"
               required
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Street address</label>
+            <input
+              name="address"
+              placeholder="e.g. 123 Main St, Oklahoma City, OK 73102"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Bedrooms</label>
+            <input
+              name="bedrooms"
+              type="number"
+              min={0}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Bathrooms</label>
+            <input
+              name="bathrooms"
+              type="number"
+              min={0}
+              step="0.5"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

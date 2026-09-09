@@ -67,6 +67,9 @@ this becomes real database tables.
 |---|---|---|
 | id | PK | e.g. `P001` |
 | name_address | text | |
+| address | text, nullable | street address; pulled from Hostaway for STR listings, entered manually for LTR/HUD-VASH |
+| bedrooms | int, nullable | pulled from Hostaway (`bedroomsNumber`) for STR listings |
+| bathrooms | decimal, nullable | pulled from Hostaway (`bathroomsNumber`) for STR listings |
 | type | enum | STR / LTR / HUD-VASH |
 | unit_count | int | |
 | assigned_cleaning_team | text | |
@@ -75,6 +78,8 @@ this becomes real database tables.
 | active | bool | |
 | hostaway_listing_id | text, nullable, unique | null for manually-entered properties |
 | source | enum | Hostaway / Manual |
+| master_door_code | text, nullable | entered manually; never touched by Hostaway sync |
+| general_notes | text, nullable | free-form notes; entered manually; never touched by Hostaway sync |
 
 **items**
 | field | type | notes |
@@ -157,9 +162,9 @@ count due soon, count items where `central_stock_qty <= reorder_threshold`.
 - Rate limits: 15 req/10s per IP, 20 req/10s per account — a full 60-property
   pull is a couple of calls, not a concern.
 - Sync is additive and one-directional (Hostaway -> app): update
-  Hostaway-sourced property records (name/address/unit count), append new
-  listings as new properties with default cadence, and never touch
-  manually-entered (`source = Manual`) rows.
+  Hostaway-sourced property records (name/address/unit count/bedrooms/
+  bathrooms), append new listings as new properties with default cadence,
+  and never touch manually-entered (`source = Manual`) rows.
 - Reference implementation: `integrations/hostaway_sync.py` (Python,
   openpyxl-based — written for the Excel prototype, but the auth flow,
   pagination, and merge semantics port directly to the real backend). It's

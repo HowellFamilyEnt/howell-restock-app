@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { setParLevel } from "./actions";
+import {
+  setParLevel,
+  updatePropertyDetails,
+  updateMasterDoorCode,
+  updateGeneralNotes,
+} from "./actions";
 
 export default async function PropertyDetailPage({
   params,
@@ -31,6 +36,108 @@ export default async function PropertyDetailPage({
           {property.type} · {property.unit_count} unit{property.unit_count === 1 ? "" : "s"} · cadence{" "}
           {property.restock_frequency_days}d
         </p>
+        {property.address && <p className="text-sm text-gray-500">{property.address}</p>}
+        {(property.bedrooms !== null || property.bathrooms !== null) && (
+          <p className="text-sm text-gray-500">
+            {property.bedrooms ?? "—"} bed / {property.bathrooms ?? "—"} bath
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Address & bed/bath</h2>
+        <form
+          action={updatePropertyDetails.bind(null, property.id)}
+          className="grid grid-cols-3 gap-4"
+        >
+          <div className="col-span-3 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Street address</label>
+            <input
+              name="address"
+              defaultValue={property.address ?? ""}
+              placeholder="e.g. 123 Main St, Oklahoma City, OK 73102"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Bedrooms</label>
+            <input
+              name="bedrooms"
+              type="number"
+              min={0}
+              defaultValue={property.bedrooms ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Bathrooms</label>
+            <input
+              name="bathrooms"
+              type="number"
+              min={0}
+              step="0.5"
+              defaultValue={property.bathrooms ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+        {property.source === "Hostaway" && (
+          <p className="mt-3 text-xs text-gray-400">
+            This property syncs from Hostaway — address/bed/bath will be overwritten by its listing
+            data on the next sync. Door code and notes below are yours and won&apos;t be touched.
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Master door code</h2>
+        <form
+          action={updateMasterDoorCode.bind(null, property.id)}
+          className="flex items-end gap-3"
+        >
+          <div className="flex-1 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Code</label>
+            <input
+              name="master_door_code"
+              defaultValue={property.master_door_code ?? ""}
+              placeholder="e.g. 1234#"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Save
+          </button>
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Notes</h2>
+        <form action={updateGeneralNotes.bind(null, property.id)} className="space-y-3">
+          <textarea
+            name="general_notes"
+            rows={4}
+            defaultValue={property.general_notes ?? ""}
+            placeholder="Anything the crew or office should know about this property..."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Save
+          </button>
+        </form>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">

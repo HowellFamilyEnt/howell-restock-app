@@ -42,6 +42,11 @@ enum NoteStatus {
 model Property {
   id                       String         @id @default(cuid())
   name_address             String
+  address                  String?
+  bedrooms                 Int?
+  bathrooms                Float?
+  master_door_code         String?
+  general_notes            String?
   type                     PropertyType
   unit_count               Int
   assigned_cleaning_team   String?
