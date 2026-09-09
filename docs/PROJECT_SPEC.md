@@ -85,6 +85,14 @@ Built ahead of the original phased order at the user's explicit request
   section 6). Currently triggered by hand via the "Send today's work
   orders" button on the Work Orders page; true unattended daily automation
   needs a cron trigger, which needs a hosting decision first (section 7).
+- **Managing a work order**: an admin can, at any time, reassign it to a
+  different team member and resend the link (independent of the daily
+  sweep), reopen a Completed/Archived one back to Open, archive it, or
+  delete it outright. Deleting a work order removes its line items but
+  never touches `restock_events` already logged from it, so usage reports
+  aren't affected. The Work Orders list can be filtered by status
+  (Open+Completed / Open / Completed / Archived / All) and supports
+  selecting multiple rows for a bulk send / archive / delete.
 - **Reporting**: `qty_added` on each completed line item is what drives
   central stock and `restock_events`, so "how much of X does property Y go
   through" reporting can run off `restock_events` alone, the same as
@@ -187,9 +195,9 @@ this becomes real database tables.
 |---|---|---|
 | id | PK | |
 | property_id | FK -> properties | |
-| assigned_team_member_id | FK -> team_members, nullable | snapshot of who it was sent to |
+| assigned_team_member_id | FK -> team_members, nullable | can be reassigned after creation; not just a snapshot |
 | share_token | text, unique | unguessable; grants access to `/wo/[token]` with no login |
-| status | enum | Open / Completed |
+| status | enum | Open / Completed / Archived — auto-flips to Completed when every line item is done; an admin manually archives it afterward (see 3.8) |
 | scheduled_for | date, nullable | the restock-due date this work order corresponds to; used by the daily sweep to avoid creating duplicates |
 | sent_at | timestamp, nullable | when the link was actually emailed/texted |
 | created_by | FK -> users, nullable | null for sweep-created work orders |

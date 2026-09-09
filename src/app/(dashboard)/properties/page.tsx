@@ -74,7 +74,7 @@ export default async function PropertiesPage() {
                     href={`/properties/${property.id}`}
                     className="text-xs font-medium text-gray-600 hover:text-gray-900"
                   >
-                    Par levels →
+                    Details →
                   </Link>
                 </td>
               </tr>

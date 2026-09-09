@@ -113,6 +113,31 @@ export async function completeWorkOrderItem(
   return { alreadyCompleted: false };
 }
 
+export type SendResult = { sent: boolean; errors: string[] };
+
+// Sends (or resends) a single work order's link to whoever it's currently
+// assigned to, independent of the daily sweep - used by the "Send" button
+// on the work order detail page and by the bulk "Send selected" action.
+export async function sendWorkOrderNow(workOrderId: string): Promise<SendResult> {
+  const workOrder = await prisma.workOrder.findUnique({
+    where: { id: workOrderId },
+    include: { property: true, assignedTeamMember: true },
+  });
+  if (!workOrder) throw new Error("Work order not found.");
+  if (!workOrder.assignedTeamMember) {
+    return { sent: false, errors: ["No team member assigned."] };
+  }
+
+  const link = workOrderLink(workOrder.share_token);
+  const result = await sendWorkOrderLink(workOrder.assignedTeamMember, workOrder.property.name_address, link);
+
+  if (result.emailSent || result.smsSent) {
+    await prisma.workOrder.update({ where: { id: workOrderId }, data: { sent_at: new Date() } });
+    return { sent: true, errors: result.errors };
+  }
+  return { sent: false, errors: result.errors.length > 0 ? result.errors : ["No channel configured."] };
+}
+
 export type SweepResult = {
   created: number;
   sent: number;

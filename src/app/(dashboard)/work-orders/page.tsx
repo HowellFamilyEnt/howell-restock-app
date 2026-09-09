@@ -1,17 +1,59 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SweepButton from "./SweepButton";
+import WorkOrdersTable from "./WorkOrdersTable";
 import { createWorkOrderForPropertyAction } from "./actions";
 
-export default async function WorkOrdersPage() {
-  const [workOrders, properties] = await Promise.all([
+const TABS = [
+  { key: "active", label: "Open + Completed" },
+  { key: "open", label: "Open" },
+  { key: "completed", label: "Completed" },
+  { key: "archived", label: "Archived" },
+  { key: "all", label: "All" },
+] as const;
+
+export default async function WorkOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const view = status ?? "active";
+
+  const [allWorkOrders, properties] = await Promise.all([
     prisma.workOrder.findMany({
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: 200,
       include: { property: true, assignedTeamMember: true, items: true },
     }),
     prisma.property.findMany({ where: { active: true }, orderBy: { name_address: "asc" } }),
   ]);
+
+  const counts = {
+    open: allWorkOrders.filter((w) => w.status === "Open").length,
+    completed: allWorkOrders.filter((w) => w.status === "Completed").length,
+    archived: allWorkOrders.filter((w) => w.status === "Archived").length,
+    all: allWorkOrders.length,
+  };
+
+  const filtered = allWorkOrders.filter((w) => {
+    if (view === "open") return w.status === "Open";
+    if (view === "completed") return w.status === "Completed";
+    if (view === "archived") return w.status === "Archived";
+    if (view === "all") return true;
+    return w.status !== "Archived"; // "active" default
+  });
+
+  const rows = filtered.map((wo) => ({
+    id: wo.id,
+    propertyName: wo.property.name_address,
+    assignedToName: wo.assignedTeamMember?.name ?? "Unassigned",
+    created: wo.createdAt.toISOString().slice(0, 10),
+    sentAt: wo.sent_at ? wo.sent_at.toISOString().slice(0, 10) : null,
+    completedCount: wo.items.filter((i) => i.completed).length,
+    totalCount: wo.items.length,
+    status: wo.status,
+  }));
 
   return (
     <div className="space-y-8">
@@ -19,67 +61,36 @@ export default async function WorkOrdersPage() {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Work orders</h1>
           <p className="text-sm text-gray-500">
-            {workOrders.length} shown — checks properties due tomorrow and emails/texts the assigned
-            team member a link.
+            Checks properties due tomorrow and emails/texts the assigned team member a link.
           </p>
         </div>
         <SweepButton />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-2">Property</th>
-              <th className="px-4 py-2">Assigned to</th>
-              <th className="px-4 py-2">Created</th>
-              <th className="px-4 py-2">Sent</th>
-              <th className="px-4 py-2">Progress</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {workOrders.map((wo) => {
-              const completedCount = wo.items.filter((i) => i.completed).length;
-              return (
-                <tr key={wo.id}>
-                  <td className="px-4 py-2 font-medium text-gray-900">{wo.property.name_address}</td>
-                  <td className="px-4 py-2 text-gray-600">{wo.assignedTeamMember?.name ?? "Unassigned"}</td>
-                  <td className="px-4 py-2 text-gray-600">{wo.createdAt.toISOString().slice(0, 10)}</td>
-                  <td className="px-4 py-2 text-gray-600">{wo.sent_at ? "Yes" : "No"}</td>
-                  <td className="px-4 py-2 text-gray-600">
-                    {completedCount}/{wo.items.length}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        wo.status === "Completed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-amber-100 text-amber-700"
-                      }`}
-                    >
-                      {wo.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Link href={`/work-orders/${wo.id}`} className="text-xs font-medium text-gray-600 hover:text-gray-900">
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-            {workOrders.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
-                  No work orders yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="flex flex-wrap gap-2 text-sm">
+        {TABS.map((tab) => {
+          const isActive = view === tab.key;
+          const count =
+            tab.key === "active"
+              ? counts.open + counts.completed
+              : (counts as Record<string, number>)[tab.key];
+          return (
+            <Link
+              key={tab.key}
+              href={tab.key === "active" ? "/work-orders" : `/work-orders?status=${tab.key}`}
+              className={`rounded-md border px-3 py-1.5 ${
+                isActive
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {tab.label} ({count})
+            </Link>
+          );
+        })}
       </div>
+
+      <WorkOrdersTable rows={rows} />
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Create a work order now</h2>

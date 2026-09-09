@@ -42,6 +42,7 @@ enum NoteStatus {
 enum WorkOrderStatus {
   Open
   Completed
+  Archived
 }
 
 model Property {

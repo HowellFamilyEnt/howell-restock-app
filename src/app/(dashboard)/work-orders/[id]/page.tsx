@@ -5,6 +5,9 @@ import { workOrderLink } from "@/lib/workorders";
 import { completeWorkOrderItemAction } from "../actions";
 import WorkOrderItemRow from "@/components/WorkOrderItemRow";
 import CopyLinkButton from "./CopyLinkButton";
+import AssignmentForm from "./AssignmentForm";
+import SendButton from "./SendButton";
+import StatusControls from "./StatusControls";
 
 export default async function WorkOrderDetailPage({
   params,
@@ -24,7 +27,14 @@ export default async function WorkOrderDetailPage({
 
   if (!workOrder) notFound();
 
+  const teamMembers = await prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } });
   const link = workOrderLink(workOrder.share_token);
+
+  const statusStyles: Record<string, string> = {
+    Open: "bg-amber-100 text-amber-700",
+    Completed: "bg-green-100 text-green-700",
+    Archived: "bg-gray-200 text-gray-600",
+  };
 
   return (
     <div className="space-y-6">
@@ -32,13 +42,30 @@ export default async function WorkOrderDetailPage({
         <Link href="/work-orders" className="text-sm text-gray-500 hover:text-gray-900">
           ← Work orders
         </Link>
-        <h1 className="text-lg font-semibold text-gray-900">{workOrder.property.name_address}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-gray-900">{workOrder.property.name_address}</h1>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[workOrder.status]}`}>
+            {workOrder.status}
+          </span>
+        </div>
         {workOrder.property.address && (
           <p className="text-sm text-gray-500">{workOrder.property.address}</p>
         )}
         <p className="text-sm text-gray-500">
-          Assigned to {workOrder.assignedTeamMember?.name ?? "Unassigned"} · Status: {workOrder.status}
+          {workOrder.sent_at ? `Sent ${workOrder.sent_at.toISOString().slice(0, 10)}` : "Not sent yet"}
         </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Assignment</h2>
+        <AssignmentForm
+          workOrderId={workOrder.id}
+          teamMembers={teamMembers}
+          currentTeamMemberId={workOrder.assigned_team_member_id}
+        />
+        <div className="mt-3">
+          <SendButton workOrderId={workOrder.id} />
+        </div>
       </div>
 
       {workOrder.property.master_door_code && (
@@ -107,6 +134,11 @@ export default async function WorkOrderDetailPage({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Manage</h2>
+        <StatusControls workOrderId={workOrder.id} status={workOrder.status} />
       </div>
     </div>
   );
