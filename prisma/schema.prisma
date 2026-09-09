@@ -1,0 +1,147 @@
+// Data model mirrors docs/PROJECT_SPEC.md section 4, which was validated
+// against reference/Howell_Restock_Data_Model.xlsx. Keep field names in
+// sync with that doc unless the user directs otherwise.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum PropertyType {
+  STR
+  LTR
+  HUD_VASH
+}
+
+enum PropertySource {
+  Hostaway
+  Manual
+}
+
+enum UserRole {
+  Admin
+  Field
+}
+
+enum NoteCategory {
+  RestockIssue
+  Repair
+  General
+}
+
+enum NoteStatus {
+  Open
+  Resolved
+}
+
+model Property {
+  id                       String         @id @default(cuid())
+  name_address             String
+  type                     PropertyType
+  unit_count               Int
+  assigned_cleaning_team   String?
+  restock_frequency_days   Int
+  urgent_restock_requested Boolean        @default(false)
+  active                   Boolean        @default(true)
+  hostaway_listing_id      String?        @unique
+  source                   PropertySource @default(Manual)
+
+  parLevels     ParLevel[]
+  restockEvents RestockEvent[]
+  notes         Note[]
+  assignedUsers User[]         @relation("AssignedProperties")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("properties")
+}
+
+model Item {
+  id                String  @id @default(cuid())
+  name              String
+  category          String
+  unit_of_measure   String
+  central_stock_qty Int     @default(0)
+  reorder_threshold Int
+  reorder_qty       Int
+  preferred_vendor  String?
+  unit_cost         Decimal @db.Decimal(10, 2)
+
+  parLevels     ParLevel[]
+  restockEvents RestockEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("items")
+}
+
+model ParLevel {
+  id          String @id @default(cuid())
+  property_id String
+  item_id     String
+  target_qty  Int
+
+  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  item     Item     @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@unique([property_id, item_id])
+  @@map("par_levels")
+}
+
+model RestockEvent {
+  id            String   @id @default(cuid())
+  property_id   String
+  item_id       String
+  date          DateTime
+  qty_delivered Int
+  logged_by     String
+  urgent_flag   Boolean  @default(false)
+  notes         String?
+
+  property     Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  item         Item     @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  loggedByUser User     @relation(fields: [logged_by], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("restock_events")
+}
+
+model Note {
+  id          String       @id @default(cuid())
+  property_id String
+  date        DateTime
+  category    NoteCategory
+  description String
+  photo_url   String?
+  status      NoteStatus   @default(Open)
+
+  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("notes")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  role          UserRole
+  password_hash String
+
+  assignedProperties Property[]     @relation("AssignedProperties")
+  restockEvents      RestockEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
