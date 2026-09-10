@@ -105,7 +105,7 @@ export default function NotesSection({
             accept="image/*"
             capture="environment"
             multiple
-            className="w-full text-sm"
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-md file:border-0 file:bg-gray-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-700"
           />
         </div>
         <button
