@@ -119,6 +119,51 @@ person, and delete/deactivate it from Settings if it's ever compromised.
 Deactivating (not deleting) is reversible if it turns out to be needed
 again; deleting is not.
 
+### 3.10 Work order due dates, auto-follow-up, and Hostaway-aware scheduling
+- **Manual due date**: both "Create work order" forms (property page, Work
+  Orders page) take an optional date, and it's editable afterward on the
+  work order's own page. Manual dates are used exactly as entered — no
+  Sunday-shifting or reservation-gap adjustment; that only applies to the
+  two automated paths below.
+- **Calendar**: an open work order with a due date shows on that date and
+  links to the work order itself, taking priority over the projected
+  "last restock + cadence" date for that property (which is what still
+  shows for any property without one).
+- **30-day auto-follow-up**: completing every line item on a work order
+  (flips it to Completed) auto-creates the next one for the same property,
+  due 30 days out. This is now the primary way an in-use property's
+  schedule advances; the daily sweep (cadence-based) mainly bootstraps
+  properties that haven't had a work order yet, and skips any property
+  that already has an Open one so the two mechanisms don't double-book it.
+- **Hostaway-aware scheduling** (`src/lib/scheduling.ts`): applies only to
+  the two automated paths above, never to a manually-picked date. Given a
+  target date, it searches target ± 0,1,2,3 days (target first) for the
+  best candidate: never a Sunday; for a Hostaway-sourced property, prefers
+  an actual turnover day (a reservation's `departureDate`) so the crew
+  isn't sent to an occupied unit, falling back to any unoccupied day, and
+  finally to the target date itself (Sunday-shifted) if nothing better is
+  found. Every match is scheduled at a fixed 13:00 UTC, inside the
+  requested 11:00-15:30 window — reservations do carry per-booking
+  `checkInTime`/`checkOutTime` (confirmed live), but as bare local-timezone
+  hour integers with no timezone this app otherwise tracks, so computing
+  an exact post-checkout minute per listing was judged too easy to get
+  subtly wrong without more live testing.
+- **Verified against the live Hostaway account (2026-09-10)**: the token
+  flow, and `GET /v1/reservations` with the field names used here
+  (`listingMapId`, `arrivalDate`, `departureDate`, `status`). Two things
+  that weren't documented clearly enough to guess and had to be checked
+  live: `listingMapId` as a query param is accepted but does **not**
+  filter server-side (confirmed by requesting one listing and getting
+  reservations back for dozens of others) — client-side filtering is
+  required. `arrivalStartDate`/`arrivalEndDate` **do** filter server-side,
+  which matters because the account has ~8,500 total reservations, so
+  fetching unfiltered isn't viable; `fetchReservationsNear` queries a
+  45-day-back/7-day-forward window around the target date and is called
+  once per scheduling batch (once per sweep run, reused across every
+  property due that day) rather than once per property, to stay well
+  under Hostaway's rate limits (15 req/10s per IP, 20 req/10s per
+  account).
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -264,8 +309,11 @@ count due soon, count items where `central_stock_qty <= reorder_threshold`.
 - Auth: OAuth 2.0 Client Credentials Grant. Token endpoint
   `POST https://api.hostaway.com/v1/accessTokens`, base URL
   `https://api.hostaway.com/v1`, listings at `GET /listings`
-  (cursor pagination via `afterId`). Credentials (Account ID + Secret API
-  Key) come from the user's Hostaway dashboard: Settings -> Integrations -> API.
+  (cursor pagination via `afterId`), reservations at `GET /reservations`
+  (see section 3.10 for the reservations endpoint's quirks - confirmed
+  live, unlike everything else in this section). Credentials (Account ID +
+  Secret API Key) come from the user's Hostaway dashboard:
+  Settings -> Integrations -> API.
 - Rate limits: 15 req/10s per IP, 20 req/10s per account — a full 60-property
   pull is a couple of calls, not a concern.
 - Sync is additive and one-directional (Hostaway -> app): update

@@ -46,11 +46,29 @@ export async function createWorkOrderForPropertyAction(formData: FormData) {
   const propertyId = String(formData.get("property_id") ?? "");
   if (!propertyId) throw new Error("Pick a property.");
 
+  const dueDateRaw = String(formData.get("due_date") ?? "").trim();
+  const scheduledFor = dueDateRaw ? new Date(`${dueDateRaw}T00:00:00Z`) : undefined;
+
   const session = await auth();
-  const workOrder = await createWorkOrderForProperty(propertyId, { createdBy: session?.user?.id });
+  const workOrder = await createWorkOrderForProperty(propertyId, {
+    createdBy: session?.user?.id,
+    scheduledFor,
+  });
 
   revalidatePath("/work-orders");
+  revalidatePath("/calendar");
   redirect(`/work-orders/${workOrder.id}`);
+}
+
+export async function updateWorkOrderDueDateAction(workOrderId: string, formData: FormData) {
+  const dueDateRaw = String(formData.get("due_date") ?? "").trim();
+  const scheduled_for = dueDateRaw ? new Date(`${dueDateRaw}T00:00:00Z`) : null;
+
+  await prisma.workOrder.update({ where: { id: workOrderId }, data: { scheduled_for } });
+
+  revalidatePath(`/work-orders/${workOrderId}`);
+  revalidatePath("/work-orders");
+  revalidatePath("/calendar");
 }
 
 export async function updateWorkOrderAssignmentAction(workOrderId: string, formData: FormData) {

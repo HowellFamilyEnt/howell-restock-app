@@ -2,6 +2,9 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendWorkOrderLink } from "@/lib/notify";
 import { addUtcDays } from "@/lib/calendar";
+import { computeScheduledTime, fetchReservationsNear } from "@/lib/scheduling";
+
+const FOLLOW_UP_DAYS = 30;
 
 export function baseUrl(): string {
   return process.env.APP_URL || "http://localhost:3000";
@@ -69,8 +72,9 @@ export async function completeWorkOrderItem(
   if (workOrderItem.completed) return { alreadyCompleted: true };
 
   const workOrderId = workOrderItem.work_order_id;
+  const propertyId = workOrderItem.workOrder.property_id;
 
-  await prisma.$transaction(async (tx) => {
+  const justCompletedWorkOrder = await prisma.$transaction(async (tx) => {
     await tx.workOrderItem.update({
       where: { id: workOrderItemId },
       data: {
@@ -84,7 +88,7 @@ export async function completeWorkOrderItem(
     if (input.qtyAdded && input.qtyAdded > 0) {
       await tx.restockEvent.create({
         data: {
-          property_id: workOrderItem.workOrder.property_id,
+          property_id: propertyId,
           item_id: workOrderItem.item_id,
           date: new Date(),
           qty_delivered: input.qtyAdded,
@@ -107,8 +111,25 @@ export async function completeWorkOrderItem(
         where: { id: workOrderId },
         data: { status: "Completed", completedAt: new Date() },
       });
+      return true;
     }
+    return false;
   });
+
+  // Auto-schedule the next visit 30 days out, once this work order is fully
+  // done. Runs after (not inside) the transaction since it may call out to
+  // Hostaway. Best-effort: a scheduling failure shouldn't undo completing
+  // the work order the crew just finished.
+  if (justCompletedWorkOrder) {
+    try {
+      const target = addUtcDays(new Date(), FOLLOW_UP_DAYS);
+      const scheduledFor = await computeScheduledTime(propertyId, target);
+      await createWorkOrderForProperty(propertyId, { scheduledFor });
+    } catch {
+      // Swallow - the completed work order stands either way; the next one
+      // can be created by hand or by the next sweep run.
+    }
+  }
 
   return { alreadyCompleted: false };
 }
@@ -166,6 +187,19 @@ export async function runDueWorkOrderSweep(): Promise<SweepResult> {
   const now = new Date();
   const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
 
+  // Fetched once and reused for every property below (rather than once per
+  // property) - every property due tomorrow shares the same target date,
+  // and Hostaway's ~8,500-reservation account makes a per-property fetch
+  // wasteful and rate-limit-risky. Only actually hits the network the
+  // first time a Hostaway-sourced property needs it.
+  let reservationsNearTomorrow: Awaited<ReturnType<typeof fetchReservationsNear>> | null = null;
+  async function reservationsForTomorrow() {
+    if (reservationsNearTomorrow === null) {
+      reservationsNearTomorrow = await fetchReservationsNear(tomorrow);
+    }
+    return reservationsNearTomorrow;
+  }
+
   for (const property of properties) {
     const lastEvent = property.restockEvents[0];
     if (!lastEvent) continue;
@@ -178,15 +212,21 @@ export async function runDueWorkOrderSweep(): Promise<SweepResult> {
 
     if (!isDueTomorrow) continue;
 
+    // Any already-Open work order for this property means scheduling is
+    // already handled - whether it came from a previous sweep run or the
+    // 30-day auto-follow-up after a completion (see completeWorkOrderItem),
+    // which won't necessarily land on the exact cadence-computed date.
     const existing = await prisma.workOrder.findFirst({
-      where: {
-        property_id: property.id,
-        scheduled_for: tomorrow,
-      },
+      where: { property_id: property.id, status: "Open" },
     });
     if (existing) continue;
 
-    const workOrder = await createWorkOrderForProperty(property.id, { scheduledFor: tomorrow });
+    const scheduledFor = await computeScheduledTime(
+      property.id,
+      tomorrow,
+      property.source === "Hostaway" ? await reservationsForTomorrow() : []
+    );
+    const workOrder = await createWorkOrderForProperty(property.id, { scheduledFor });
     result.created += 1;
 
     if (!property.assignedTeamMember) {

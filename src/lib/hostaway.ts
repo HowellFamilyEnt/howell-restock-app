@@ -15,6 +15,7 @@ import { getHostawayCredentials } from "@/lib/settings";
 
 const TOKEN_URL = "https://api.hostaway.com/v1/accessTokens";
 const LISTINGS_URL = "https://api.hostaway.com/v1/listings";
+const RESERVATIONS_URL = "https://api.hostaway.com/v1/reservations";
 
 type HostawayListing = {
   id: number;
@@ -36,7 +37,7 @@ type MappedListing = {
   bathrooms: number | null;
 };
 
-async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
+export async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: {
@@ -90,6 +91,56 @@ async function fetchAllListings(token: string): Promise<HostawayListing[]> {
   }
 
   return listings;
+}
+
+export type HostawayReservation = {
+  id: number;
+  listingMapId: number;
+  arrivalDate: string; // YYYY-MM-DD
+  departureDate: string; // YYYY-MM-DD
+  status?: string | null;
+};
+
+// Verified against a live account (2026-09-10): the `listingMapId` query
+// param is silently ignored (does NOT filter server-side - the account has
+// ~8,500 reservations across every listing, so fetching unfiltered is not
+// viable), but `arrivalStartDate` / `arrivalEndDate` genuinely do filter.
+// Callers pass a bounded window and filter to one listing client-side (see
+// src/lib/scheduling.ts) since a single listing's reservations aren't
+// otherwise fetchable directly.
+export async function fetchReservationsByArrivalWindow(
+  token: string,
+  arrivalStartDate: string,
+  arrivalEndDate: string
+): Promise<HostawayReservation[]> {
+  const reservations: HostawayReservation[] = [];
+  let afterId = 0;
+
+  while (true) {
+    const url = new URL(RESERVATIONS_URL);
+    url.searchParams.set("arrivalStartDate", arrivalStartDate);
+    url.searchParams.set("arrivalEndDate", arrivalEndDate);
+    url.searchParams.set("limit", "100");
+    url.searchParams.set("afterId", String(afterId));
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Hostaway reservations request failed: ${res.status} ${res.statusText}`);
+    }
+
+    const data = (await res.json()) as { result?: HostawayReservation[] };
+    const page = data.result ?? [];
+    if (page.length === 0) break;
+
+    reservations.push(...page);
+    afterId = page[page.length - 1].id;
+    if (page.length < 100) break;
+  }
+
+  return reservations.filter((r) => r.status !== "cancelled" && r.status !== "declined");
 }
 
 function mapListing(listing: HostawayListing): MappedListing {

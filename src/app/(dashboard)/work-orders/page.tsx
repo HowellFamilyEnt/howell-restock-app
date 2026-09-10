@@ -48,6 +48,7 @@ export default async function WorkOrdersPage({
     id: wo.id,
     propertyName: wo.property.name_address,
     assignedToName: wo.assignedTeamMember?.name ?? "Unassigned",
+    dueDate: wo.scheduled_for ? wo.scheduled_for.toISOString().slice(0, 10) : null,
     created: wo.createdAt.toISOString().slice(0, 10),
     sentAt: wo.sent_at ? wo.sent_at.toISOString().slice(0, 10) : null,
     completedCount: wo.items.filter((i) => i.completed).length,
@@ -108,6 +109,14 @@ export default async function WorkOrdersPage({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Due date (optional)</label>
+            <input
+              name="due_date"
+              type="date"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
           <button
             type="submit"

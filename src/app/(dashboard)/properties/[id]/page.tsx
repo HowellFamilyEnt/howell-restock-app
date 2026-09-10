@@ -191,7 +191,15 @@ export default async function PropertyDetailPage({
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Work orders</h2>
-          <form action={createWorkOrderAction.bind(null, property.id)}>
+          <form action={createWorkOrderAction.bind(null, property.id)} className="flex items-end gap-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-700">Due date (optional)</label>
+              <input
+                name="due_date"
+                type="date"
+                className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+            </div>
             <button
               type="submit"
               className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
@@ -207,7 +215,10 @@ export default async function PropertyDetailPage({
             {workOrders.map((wo) => (
               <li key={wo.id} className="flex items-center justify-between">
                 <span className="text-gray-600">
-                  {wo.createdAt.toISOString().slice(0, 10)} · {wo.assignedTeamMember?.name ?? "Unassigned"} ·{" "}
+                  {wo.scheduled_for
+                    ? `Due ${wo.scheduled_for.toISOString().slice(0, 10)}`
+                    : `Created ${wo.createdAt.toISOString().slice(0, 10)}`}{" "}
+                  · {wo.assignedTeamMember?.name ?? "Unassigned"} ·{" "}
                   <span className={wo.status === "Completed" ? "text-green-600" : "text-amber-600"}>
                     {wo.status}
                   </span>

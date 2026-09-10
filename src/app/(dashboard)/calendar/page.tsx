@@ -22,24 +22,60 @@ export default async function CalendarPage({
   const year = Number(params.year) || today.year;
   const month = Number(params.month) || today.month;
 
-  const properties = await prisma.property.findMany({
-    where: { active: true },
-    orderBy: { name_address: "asc" },
-    include: {
-      restockEvents: {
-        orderBy: { date: "desc" },
-        take: 1,
+  const [properties, openWorkOrders] = await Promise.all([
+    prisma.property.findMany({
+      where: { active: true },
+      orderBy: { name_address: "asc" },
+      include: {
+        restockEvents: {
+          orderBy: { date: "desc" },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+    prisma.workOrder.findMany({
+      where: { status: "Open", scheduled_for: { not: null } },
+      orderBy: { scheduled_for: "asc" },
+    }),
+  ]);
 
-  const scheduledByDay = new Map<
-    number,
-    { id: string; name_address: string; urgent_restock_requested: boolean }[]
-  >();
+  const workOrderByProperty = new Map<string, (typeof openWorkOrders)[number]>();
+  for (const wo of openWorkOrders) {
+    if (!workOrderByProperty.has(wo.property_id)) workOrderByProperty.set(wo.property_id, wo);
+  }
+
+  type CalendarEntry = {
+    id: string;
+    name_address: string;
+    urgent_restock_requested: boolean;
+    href: string;
+  };
+  const scheduledByDay = new Map<number, CalendarEntry[]>();
   const notScheduled: typeof properties = [];
 
   for (const property of properties) {
+    const workOrder = workOrderByProperty.get(property.id);
+
+    // A scheduled work order is the real, actionable due date - it takes
+    // priority over the projection below, which is just "last restock +
+    // cadence" and may no longer be accurate once work orders are in play.
+    if (workOrder?.scheduled_for) {
+      const due = workOrder.scheduled_for;
+      if (due.getUTCFullYear() === year && due.getUTCMonth() + 1 === month) {
+        const day = due.getUTCDate();
+        const entry: CalendarEntry = {
+          id: property.id,
+          name_address: property.name_address,
+          urgent_restock_requested: property.urgent_restock_requested,
+          href: `/work-orders/${workOrder.id}`,
+        };
+        const existing = scheduledByDay.get(day);
+        if (existing) existing.push(entry);
+        else scheduledByDay.set(day, [entry]);
+      }
+      continue; // scheduled (maybe just not in this month) - never "not scheduled"
+    }
+
     const lastEvent = property.restockEvents[0];
     if (!lastEvent) {
       notScheduled.push(property);
@@ -49,10 +85,11 @@ export default async function CalendarPage({
     const dueDate = addUtcDays(lastEvent.date, property.restock_frequency_days);
     if (dueDate.getUTCFullYear() === year && dueDate.getUTCMonth() + 1 === month) {
       const day = dueDate.getUTCDate();
-      const entry = {
+      const entry: CalendarEntry = {
         id: property.id,
         name_address: property.name_address,
         urgent_restock_requested: property.urgent_restock_requested,
+        href: `/properties/${property.id}`,
       };
       const existing = scheduledByDay.get(day);
       if (existing) existing.push(entry);
@@ -77,7 +114,8 @@ export default async function CalendarPage({
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Restock calendar</h1>
           <p className="text-sm text-gray-500">
-            Next scheduled restock per property (last restock + cadence).
+            Open work orders show on their due date; properties without one show a projected date
+            (last restock + cadence).
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -140,7 +178,7 @@ export default async function CalendarPage({
                       {entries.map((entry) => (
                         <Link
                           key={entry.id}
-                          href={`/properties/${entry.id}`}
+                          href={entry.href}
                           className={`block truncate rounded px-1.5 py-0.5 text-xs hover:underline ${
                             entry.urgent_restock_requested
                               ? "bg-red-100 text-red-700"

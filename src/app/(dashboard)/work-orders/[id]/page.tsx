@@ -8,6 +8,7 @@ import CopyLinkButton from "@/components/CopyLinkButton";
 import AssignmentForm from "./AssignmentForm";
 import SendButton from "./SendButton";
 import StatusControls from "./StatusControls";
+import DueDateForm from "./DueDateForm";
 
 export default async function WorkOrderDetailPage({
   params,
@@ -52,8 +53,18 @@ export default async function WorkOrderDetailPage({
           <p className="text-sm text-gray-500">{workOrder.property.address}</p>
         )}
         <p className="text-sm text-gray-500">
+          {workOrder.scheduled_for ? `Due ${workOrder.scheduled_for.toISOString().slice(0, 10)}` : "No due date set"}
+          {" · "}
           {workOrder.sent_at ? `Sent ${workOrder.sent_at.toISOString().slice(0, 10)}` : "Not sent yet"}
         </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Due date</h2>
+        <DueDateForm
+          workOrderId={workOrder.id}
+          currentDueDate={workOrder.scheduled_for ? workOrder.scheduled_for.toISOString().slice(0, 10) : null}
+        />
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">

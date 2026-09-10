@@ -12,6 +12,7 @@ type Row = {
   id: string;
   propertyName: string;
   assignedToName: string;
+  dueDate: string | null;
   created: string;
   sentAt: string | null;
   completedCount: number;
@@ -98,6 +99,7 @@ export default function WorkOrdersTable({ rows }: { rows: Row[] }) {
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               </th>
               <th className="px-4 py-2">Property</th>
+              <th className="px-4 py-2">Due</th>
               <th className="px-4 py-2">Assigned to</th>
               <th className="px-4 py-2">Created</th>
               <th className="px-4 py-2">Sent</th>
@@ -117,6 +119,7 @@ export default function WorkOrdersTable({ rows }: { rows: Row[] }) {
                   />
                 </td>
                 <td className="px-4 py-2 font-medium text-gray-900">{row.propertyName}</td>
+                <td className="px-4 py-2 text-gray-600">{row.dueDate ?? "—"}</td>
                 <td className="px-4 py-2 text-gray-600">{row.assignedToName}</td>
                 <td className="px-4 py-2 text-gray-600">{row.created}</td>
                 <td className="px-4 py-2 text-gray-600">{row.sentAt ?? "No"}</td>
@@ -137,7 +140,7 @@ export default function WorkOrdersTable({ rows }: { rows: Row[] }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
                   No work orders in this view.
                 </td>
               </tr>

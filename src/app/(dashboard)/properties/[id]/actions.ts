@@ -78,12 +78,17 @@ export async function updateAssignedTeamMember(propertyId: string, formData: For
   revalidatePath(`/properties/${propertyId}`);
 }
 
-export async function createWorkOrderAction(propertyId: string) {
+export async function createWorkOrderAction(propertyId: string, formData: FormData) {
   const session = await auth();
+  const dueDateRaw = String(formData.get("due_date") ?? "").trim();
+  const scheduledFor = dueDateRaw ? new Date(`${dueDateRaw}T00:00:00Z`) : undefined;
+
   const workOrder = await createWorkOrderForProperty(propertyId, {
     createdBy: session?.user?.id,
+    scheduledFor,
   });
 
   revalidatePath(`/properties/${propertyId}`);
+  revalidatePath("/calendar");
   redirect(`/work-orders/${workOrder.id}`);
 }

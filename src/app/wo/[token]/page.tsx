@@ -32,6 +32,7 @@ export default async function PublicWorkOrderPage({
             <p className="text-sm text-gray-500">{workOrder.property.address}</p>
           )}
           <p className="text-sm text-gray-500">
+            {workOrder.scheduled_for && `Due ${workOrder.scheduled_for.toISOString().slice(0, 10)} · `}
             {completedCount}/{workOrder.items.length} items completed
             {workOrder.status === "Completed" && " · Work order complete"}
           </p>
