@@ -11,6 +11,7 @@ import StatusControls from "./StatusControls";
 import DueDateForm from "./DueDateForm";
 import NotesSection from "@/components/NotesSection";
 import { addWorkOrderNoteAction } from "../actions";
+import { groupByRoom } from "@/lib/roomGroups";
 
 export default async function WorkOrderDetailPage({
   params,
@@ -33,6 +34,7 @@ export default async function WorkOrderDetailPage({
 
   const teamMembers = await prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } });
   const link = workOrderLink(workOrder.share_token);
+  const itemsByRoom = groupByRoom(workOrder.items, (woItem) => woItem.item.room_groups);
 
   const statusStyles: Record<string, string> = {
     Open: "bg-amber-100 text-amber-700",
@@ -111,44 +113,48 @@ export default async function WorkOrderDetailPage({
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-2">Item</th>
-              <th className="px-4 py-2">Unit</th>
-              <th className="px-4 py-2">Needed</th>
-              <th className="px-4 py-2" colSpan={3}>
-                On site / added
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {workOrder.items.map((woItem) => (
-              <WorkOrderItemRow
-                key={woItem.id}
-                item={{
-                  id: woItem.id,
-                  name: woItem.item.name,
-                  unit_of_measure: woItem.item.unit_of_measure,
-                  qty_needed: woItem.qty_needed,
-                  qty_on_site: woItem.qty_on_site,
-                  qty_added: woItem.qty_added,
-                  completed: woItem.completed,
-                }}
-                action={completeWorkOrderItemAction.bind(null, workOrder.id, woItem.id)}
-              />
-            ))}
-            {workOrder.items.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                  No par levels were set for this property when the work order was created.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {workOrder.items.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+          No par levels were set for this property when the work order was created.
+        </div>
+      ) : (
+        itemsByRoom.map((section) => (
+          <div key={section.label} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-900">
+              {section.label}
+            </h2>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2">Item</th>
+                  <th className="px-4 py-2">Unit</th>
+                  <th className="px-4 py-2">Needed</th>
+                  <th className="px-4 py-2" colSpan={3}>
+                    On site / added
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {section.items.map((woItem) => (
+                  <WorkOrderItemRow
+                    key={woItem.id}
+                    item={{
+                      id: woItem.id,
+                      name: woItem.item.name,
+                      unit_of_measure: woItem.item.unit_of_measure,
+                      qty_needed: woItem.qty_needed,
+                      qty_on_site: woItem.qty_on_site,
+                      qty_added: woItem.qty_added,
+                      completed: woItem.completed,
+                    }}
+                    action={completeWorkOrderItemAction.bind(null, workOrder.id, woItem.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))
+      )}
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Notes &amp; photos</h2>

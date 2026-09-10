@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { completePublicWorkOrderItemAction, addPublicWorkOrderNoteAction } from "./actions";
 import WorkOrderItemRow from "@/components/WorkOrderItemRow";
 import NotesSection from "@/components/NotesSection";
+import { groupByRoom } from "@/lib/roomGroups";
 
 export default async function PublicWorkOrderPage({
   params,
@@ -24,6 +25,7 @@ export default async function PublicWorkOrderPage({
   if (!workOrder) notFound();
 
   const completedCount = workOrder.items.filter((i) => i.completed).length;
+  const itemsByRoom = groupByRoom(workOrder.items, (woItem) => woItem.item.room_groups);
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
@@ -55,44 +57,48 @@ export default async function PublicWorkOrderPage({
           </div>
         )}
 
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-4 py-2">Item</th>
-                <th className="px-4 py-2">Unit</th>
-                <th className="px-4 py-2">Needed</th>
-                <th className="px-4 py-2" colSpan={3}>
-                  On site / added
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {workOrder.items.map((woItem) => (
-                <WorkOrderItemRow
-                  key={woItem.id}
-                  item={{
-                    id: woItem.id,
-                    name: woItem.item.name,
-                    unit_of_measure: woItem.item.unit_of_measure,
-                    qty_needed: woItem.qty_needed,
-                    qty_on_site: woItem.qty_on_site,
-                    qty_added: woItem.qty_added,
-                    completed: woItem.completed,
-                  }}
-                  action={completePublicWorkOrderItemAction.bind(null, token, woItem.id)}
-                />
-              ))}
-              {workOrder.items.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
-                    Nothing to restock on this work order.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {workOrder.items.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+            Nothing to restock on this work order.
+          </div>
+        ) : (
+          itemsByRoom.map((section) => (
+            <div key={section.label} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+              <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-900">
+                {section.label}
+              </h2>
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2">Item</th>
+                    <th className="px-4 py-2">Unit</th>
+                    <th className="px-4 py-2">Needed</th>
+                    <th className="px-4 py-2" colSpan={3}>
+                      On site / added
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {section.items.map((woItem) => (
+                    <WorkOrderItemRow
+                      key={woItem.id}
+                      item={{
+                        id: woItem.id,
+                        name: woItem.item.name,
+                        unit_of_measure: woItem.item.unit_of_measure,
+                        qty_needed: woItem.qty_needed,
+                        qty_on_site: woItem.qty_on_site,
+                        qty_added: woItem.qty_added,
+                        completed: woItem.completed,
+                      }}
+                      action={completePublicWorkOrderItemAction.bind(null, token, woItem.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        )}
 
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="mb-1 text-sm font-medium text-gray-700">See something that needs attention?</p>

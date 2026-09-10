@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { updateItem, toggleItemActive } from "../actions";
 import DeleteItemButton from "./DeleteItemButton";
+import { ROOM_GROUP_ORDER } from "@/lib/roomGroups";
 
 export default async function ItemDetailPage({
   params,
@@ -103,6 +104,24 @@ export default async function ItemDetailPage({
               defaultValue={item.unit_cost.toString()}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">
+              Room(s) — for grouping on property details & work orders
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {ROOM_GROUP_ORDER.map((room) => (
+                <label key={room} className="flex items-center gap-1.5 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="room_groups"
+                    value={room}
+                    defaultChecked={item.room_groups.includes(room)}
+                  />
+                  {room}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="col-span-2">
             <button

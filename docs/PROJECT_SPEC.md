@@ -190,6 +190,18 @@ concept still works even without a work order).
   confirmed publicly reachable afterward; a real Resend send through
   `sendEmail` once the user had a verified sending domain configured.
 
+### 3.12 Item room grouping
+`items.room_groups` (text array, editable as checkboxes on the Add/Edit
+Item forms - Kitchen / Bathroom / Laundry Room / Misc, `src/lib/roomGroups.ts`
+is the canonical list) groups items for display on the property detail
+page's par levels table and on work orders (admin + public) - separate
+from `category`, which is a general product taxonomy and unaffected by
+this. An item can be in more than one room (Hand Soap: Kitchen and
+Bathroom both, shown in both sections) - there is still only one shared
+par level/quantity per property for it, not one per room. Items with no
+room_groups set land in a trailing "Other" section rather than being
+dropped.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -229,6 +241,7 @@ this becomes real database tables.
 | preferred_vendor | text | |
 | unit_cost | decimal | |
 | active | bool | soft delete - hides from catalog/logging/par levels without losing restock history; hard delete only allowed when the item has no restock history, par levels, or work order references |
+| room_groups | text array | see section 3.12 - Kitchen/Bathroom/Laundry Room/Misc, can hold more than one |
 
 **par_levels** (junction: property x item)
 | field | type | notes |

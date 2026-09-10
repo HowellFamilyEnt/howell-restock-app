@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { createItem } from "./actions";
+import { ROOM_GROUP_ORDER } from "@/lib/roomGroups";
 
 export default async function ItemsPage({
   searchParams,
@@ -36,6 +37,7 @@ export default async function ItemsPage({
             <tr>
               <th className="px-4 py-2">Item</th>
               <th className="px-4 py-2">Category</th>
+              <th className="px-4 py-2">Room(s)</th>
               <th className="px-4 py-2">Unit</th>
               <th className="px-4 py-2">Central stock</th>
               <th className="px-4 py-2">Reorder threshold</th>
@@ -52,6 +54,9 @@ export default async function ItemsPage({
                 <tr key={item.id} className={item.active ? "" : "opacity-50"}>
                   <td className="px-4 py-2 font-medium text-gray-900">{item.name}</td>
                   <td className="px-4 py-2 text-gray-600">{item.category}</td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {item.room_groups.length > 0 ? item.room_groups.join(", ") : "—"}
+                  </td>
                   <td className="px-4 py-2 text-gray-600">{item.unit_of_measure}</td>
                   <td className={`px-4 py-2 ${low ? "font-semibold text-red-600" : "text-gray-600"}`}>
                     {item.central_stock_qty}
@@ -74,7 +79,7 @@ export default async function ItemsPage({
             })}
             {items.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
                   No items yet — add one below.
                 </td>
               </tr>
@@ -156,6 +161,19 @@ export default async function ItemsPage({
               defaultValue={0}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">
+              Room(s) — for grouping on property details & work orders
+            </label>
+            <div className="flex flex-wrap gap-3">
+              {ROOM_GROUP_ORDER.map((room) => (
+                <label key={room} className="flex items-center gap-1.5 text-sm text-gray-700">
+                  <input type="checkbox" name="room_groups" value={room} />
+                  {room}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="col-span-2">
             <button

@@ -77,16 +77,23 @@ model Property {
 }
 
 model Item {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid())
   name              String
   category          String
   unit_of_measure   String
-  central_stock_qty Int     @default(0)
+  central_stock_qty Int      @default(0)
   reorder_threshold Int
   reorder_qty       Int
   preferred_vendor  String?
-  unit_cost         Decimal @db.Decimal(10, 2)
-  active            Boolean @default(true)
+  unit_cost         Decimal  @db.Decimal(10, 2)
+  active            Boolean  @default(true)
+  // Which room(s) this item is grouped under in the property detail page's
+  // par levels table and on work orders (admin + public) - separate from
+  // `category` above, which is a general product taxonomy. An item can be
+  // in more than one room (e.g. Hand Soap: Kitchen and Bathroom) - there's
+  // still only one shared par level/quantity per property though, not one
+  // per room it's grouped under. Empty means "Other" in the grouped UI.
+  room_groups       String[] @default([])
 
   parLevels      ParLevel[]
   restockEvents  RestockEvent[]
