@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { completePublicWorkOrderItemAction } from "./actions";
+import { completePublicWorkOrderItemAction, addPublicWorkOrderNoteAction } from "./actions";
 import WorkOrderItemRow from "@/components/WorkOrderItemRow";
+import NotesSection from "@/components/NotesSection";
 
 export default async function PublicWorkOrderPage({
   params,
@@ -16,6 +17,7 @@ export default async function PublicWorkOrderPage({
       property: true,
       assignedTeamMember: true,
       items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+      notes: { include: { photos: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -90,6 +92,24 @@ export default async function PublicWorkOrderPage({
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <p className="mb-1 text-sm font-medium text-gray-700">See something that needs attention?</p>
+          <p className="mb-4 text-sm text-gray-500">
+            Note it here, with a photo if you can — it goes to the office once this visit is complete.
+          </p>
+          <NotesSection
+            notes={workOrder.notes.map((note) => ({
+              id: note.id,
+              category: note.category,
+              description: note.description,
+              status: note.status,
+              createdAt: note.createdAt.toISOString().slice(0, 10),
+              photos: note.photos.map((p) => ({ id: p.id, url: p.url })),
+            }))}
+            action={addPublicWorkOrderNoteAction.bind(null, token)}
+          />
         </div>
       </div>
     </div>

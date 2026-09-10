@@ -9,6 +9,8 @@ import AssignmentForm from "./AssignmentForm";
 import SendButton from "./SendButton";
 import StatusControls from "./StatusControls";
 import DueDateForm from "./DueDateForm";
+import NotesSection from "@/components/NotesSection";
+import { addWorkOrderNoteAction } from "../actions";
 
 export default async function WorkOrderDetailPage({
   params,
@@ -23,6 +25,7 @@ export default async function WorkOrderDetailPage({
       property: true,
       assignedTeamMember: true,
       items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+      notes: { include: { photos: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -145,6 +148,25 @@ export default async function WorkOrderDetailPage({
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Notes &amp; photos</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Anything noticed on-site that needs attention. Gets emailed to the service admin when this
+          work order is completed.
+        </p>
+        <NotesSection
+          notes={workOrder.notes.map((note) => ({
+            id: note.id,
+            category: note.category,
+            description: note.description,
+            status: note.status,
+            createdAt: note.createdAt.toISOString().slice(0, 10),
+            photos: note.photos.map((p) => ({ id: p.id, url: p.url })),
+          }))}
+          action={addWorkOrderNoteAction.bind(null, workOrder.id, workOrder.property_id)}
+        />
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">

@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { completeWorkOrderItem } from "@/lib/workorders";
+import { addNoteToWorkOrder } from "@/lib/notes";
+import type { NoteCategory } from "@prisma/client";
 
 // Public, unauthenticated action reachable only via a work order's
 // unguessable share_token - see src/app/wo/[token]/page.tsx. Looks up the
@@ -43,4 +45,35 @@ export async function completePublicWorkOrderItemAction(
   });
 
   revalidatePath(`/wo/${token}`);
+}
+
+// Public, unauthenticated - the token itself is the access control. Looked
+// up fresh here (not passed from the page) so a stale/forged property id
+// can never be paired with someone else's token.
+export async function addPublicWorkOrderNoteAction(
+  token: string,
+  _prevState: string | undefined,
+  formData: FormData
+): Promise<string> {
+  const workOrder = await prisma.workOrder.findUnique({ where: { share_token: token } });
+  if (!workOrder) throw new Error("Work order not found.");
+
+  const category = String(formData.get("category") ?? "General") as NoteCategory;
+  const description = String(formData.get("description") ?? "");
+  const photoFiles = formData.getAll("photos").filter((f): f is File => f instanceof File);
+
+  const { uploadErrors } = await addNoteToWorkOrder({
+    workOrderId: workOrder.id,
+    propertyId: workOrder.property_id,
+    category,
+    description,
+    photoFiles,
+  });
+
+  revalidatePath(`/wo/${token}`);
+
+  if (uploadErrors.length > 0) {
+    return `Note saved, but: ${uploadErrors.join("; ")}`;
+  }
+  return "Note added.";
 }

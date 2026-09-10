@@ -11,6 +11,8 @@ import {
   sendWorkOrderNow,
   type SweepResult,
 } from "@/lib/workorders";
+import { addNoteToWorkOrder } from "@/lib/notes";
+import type { NoteCategory } from "@prisma/client";
 
 export async function completeWorkOrderItemAction(
   workOrderId: string,
@@ -130,6 +132,32 @@ export async function bulkSendWorkOrdersAction(ids: string[]): Promise<string> {
   let message = `${sent}/${ids.length} sent.`;
   if (errors.length > 0) message += ` Errors: ${errors.slice(0, 3).join("; ")}`;
   return message;
+}
+
+export async function addWorkOrderNoteAction(
+  workOrderId: string,
+  propertyId: string,
+  _prevState: string | undefined,
+  formData: FormData
+): Promise<string> {
+  const category = String(formData.get("category") ?? "General") as NoteCategory;
+  const description = String(formData.get("description") ?? "");
+  const photoFiles = formData.getAll("photos").filter((f): f is File => f instanceof File);
+
+  const { uploadErrors } = await addNoteToWorkOrder({
+    workOrderId,
+    propertyId,
+    category,
+    description,
+    photoFiles,
+  });
+
+  revalidatePath(`/work-orders/${workOrderId}`);
+
+  if (uploadErrors.length > 0) {
+    return `Note saved, but: ${uploadErrors.join("; ")}`;
+  }
+  return "Note added.";
 }
 
 export async function runSweepAction(

@@ -18,6 +18,9 @@ export default async function SettingsPage() {
   const smsEnvConfigured = Boolean(
     process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER
   );
+  const storageEnvConfigured = Boolean(
+    process.env.SUPABASE_PROJECT_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
   return (
     <div className="space-y-8">
@@ -100,6 +103,54 @@ export default async function SettingsPage() {
               label: "From number",
               masked: settings?.twilio_from_number ?? null,
               placeholder: "+15551234567",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Photo storage (Supabase)</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Used to store photos attached to work order notes. In your Supabase project dashboard:
+          Project Settings → API for the project URL and the{" "}
+          <span className="font-medium">service_role</span> key (not the anon key — this one bypasses
+          row-level security, so it&apos;s only ever used server-side here).
+        </p>
+        {storageEnvConfigured && (
+          <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            SUPABASE_PROJECT_URL / SUPABASE_SERVICE_ROLE_KEY are set as environment variables on this
+            deployment, so those take precedence over whatever is saved here.
+          </p>
+        )}
+        <CredentialForm
+          fields={[
+            {
+              name: "supabase_project_url",
+              label: "Project URL",
+              masked: settings?.supabase_project_url ?? null,
+              placeholder: "https://xxxxxxxx.supabase.co",
+            },
+            {
+              name: "supabase_service_role_key",
+              label: "Service role key",
+              masked: mask(settings?.supabase_service_role_key),
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Service admin</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          When a work order with notes is completed, its notes (and any photo links) are emailed here.
+        </p>
+        <CredentialForm
+          fields={[
+            {
+              name: "service_admin_email",
+              label: "Email address",
+              masked: settings?.service_admin_email ?? null,
+              placeholder: "maintenance@yourcompany.com",
             },
           ]}
         />

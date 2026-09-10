@@ -131,20 +131,38 @@ model RestockEvent {
   @@map("restock_events")
 }
 
+// Repair/issue notes, optionally tied to the work order visit they were
+// spotted during (work_order_id) - always tied to a property either way.
+// Completing a work order emails any of its notes (with photo links) to
+// the service admin - see completeWorkOrderItem in src/lib/workorders.ts.
 model Note {
-  id          String       @id @default(cuid())
-  property_id String
-  date        DateTime
-  category    NoteCategory
-  description String
-  photo_url   String?
-  status      NoteStatus   @default(Open)
+  id            String       @id @default(cuid())
+  property_id   String
+  work_order_id String?
+  date          DateTime
+  category      NoteCategory
+  description   String
+  status        NoteStatus   @default(Open)
 
-  property Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  property  Property    @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  workOrder WorkOrder?  @relation(fields: [work_order_id], references: [id], onDelete: Cascade)
+  photos    NotePhoto[]
 
   createdAt DateTime @default(now())
 
   @@map("notes")
+}
+
+model NotePhoto {
+  id      String @id @default(cuid())
+  note_id String
+  url     String
+
+  note Note @relation(fields: [note_id], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("note_photos")
 }
 
 model TeamMember {
@@ -183,6 +201,7 @@ model WorkOrder {
   assignedTeamMember TeamMember?     @relation(fields: [assigned_team_member_id], references: [id])
   createdByUser      User?           @relation(fields: [created_by], references: [id])
   items              WorkOrderItem[]
+  notes              Note[]
 
   createdAt   DateTime  @default(now())
   completedAt DateTime?
@@ -228,15 +247,18 @@ model User {
 // the DB-backed alternative to the HOSTAWAY_ACCOUNT_ID / HOSTAWAY_API_KEY
 // env vars, which still take precedence if set (see src/lib/settings.ts).
 model IntegrationSettings {
-  id                  String   @id @default("hostaway")
-  hostaway_account_id String?
-  hostaway_api_key    String?
-  resend_api_key      String?
-  resend_from_email   String?
-  twilio_account_sid  String?
-  twilio_auth_token   String?
-  twilio_from_number  String?
-  updatedAt           DateTime @updatedAt
+  id                        String   @id @default("hostaway")
+  hostaway_account_id       String?
+  hostaway_api_key          String?
+  resend_api_key            String?
+  resend_from_email         String?
+  twilio_account_sid        String?
+  twilio_auth_token         String?
+  twilio_from_number        String?
+  supabase_project_url      String?
+  supabase_service_role_key String?
+  service_admin_email       String?
+  updatedAt                 DateTime @updatedAt
 
   @@map("integration_settings")
 }

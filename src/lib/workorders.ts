@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendWorkOrderLink } from "@/lib/notify";
 import { addUtcDays } from "@/lib/calendar";
 import { computeScheduledTime, fetchReservationsNear } from "@/lib/scheduling";
+import { emailWorkOrderNotesToServiceAdmin } from "@/lib/notes";
 
 const FOLLOW_UP_DAYS = 30;
 
@@ -128,6 +129,13 @@ export async function completeWorkOrderItem(
     } catch {
       // Swallow - the completed work order stands either way; the next one
       // can be created by hand or by the next sweep run.
+    }
+
+    try {
+      await emailWorkOrderNotesToServiceAdmin(workOrderId);
+    } catch {
+      // Swallow - the notes stay attached to the work order either way and
+      // are visible on its page even if the email didn't go out.
     }
   }
 

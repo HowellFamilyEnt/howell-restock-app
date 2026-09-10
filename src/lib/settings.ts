@@ -43,6 +43,34 @@ export async function getEmailCredentials(): Promise<EmailCredentials | null> {
   return null;
 }
 
+export type SupabaseStorageCredentials = {
+  projectUrl: string;
+  serviceRoleKey: string;
+};
+
+export async function getSupabaseStorageCredentials(): Promise<SupabaseStorageCredentials | null> {
+  const envUrl = process.env.SUPABASE_PROJECT_URL;
+  const envKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (envUrl && envKey) {
+    return { projectUrl: envUrl, serviceRoleKey: envKey };
+  }
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  if (settings?.supabase_project_url && settings?.supabase_service_role_key) {
+    return { projectUrl: settings.supabase_project_url, serviceRoleKey: settings.supabase_service_role_key };
+  }
+
+  return null;
+}
+
+export async function getServiceAdminEmail(): Promise<string | null> {
+  const envEmail = process.env.SERVICE_ADMIN_EMAIL;
+  if (envEmail) return envEmail;
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.service_admin_email ?? null;
+}
+
 export type SmsCredentials = {
   accountSid: string;
   authToken: string;

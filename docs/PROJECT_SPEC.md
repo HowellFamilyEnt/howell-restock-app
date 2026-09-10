@@ -164,6 +164,32 @@ again; deleting is not.
   under Hostaway's rate limits (15 req/10s per IP, 20 req/10s per
   account).
 
+### 3.11 Work order notes, photos, and the service admin
+Reuses (and completes) the `Note` model that was already in the data model
+from the original spec but never built out. Each work order (public
+`/wo/[token]` page and the admin `/work-orders/[id]` page) has a Notes &
+photos section where anyone can flag something noticed on-site - category
+(Restock Issue / Repair / General), a description, and any number of
+photos - independent of the restock line items above it. Notes are tied to
+`work_order_id` (and always to `property_id`, so the underlying repair-log
+concept still works even without a work order).
+
+- **Photos**: uploaded to Supabase Storage (same Supabase project as the
+  database - Project Settings → API for the URL and `service_role` key,
+  entered on the Settings page or as env vars). The bucket
+  (`work-order-photos`) is created automatically on first upload if it
+  doesn't exist yet, and is public so photo URLs work directly in emails
+  without a signed-URL step. 10MB/file cap, image files only.
+- **Service admin email**: completing a work order (every line item done,
+  same trigger as the 30-day auto-follow-up) emails any notes on it - with
+  photo links - to a single configured address (Settings → Service admin).
+  Best-effort: a missing address, unconfigured Resend, or a send failure
+  never blocks completing the work order; the notes stay visible on the
+  work order's page regardless.
+- **Verified live** (2026-09-10): a real photo upload to Supabase Storage,
+  confirmed publicly reachable afterward; a real Resend send through
+  `sendEmail` once the user had a verified sending domain configured.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -225,16 +251,23 @@ this becomes real database tables.
 | urgent_flag | bool | was this an early/urgent visit |
 | notes | text | |
 
-**notes** (repair & photo log)
+**notes** (repair & photo log — see section 3.11)
 | field | type | notes |
 |---|---|---|
 | id | PK | |
 | property_id | FK -> properties | |
+| work_order_id | FK -> work_orders, nullable | which visit this was spotted during, if any |
 | date | date | |
 | category | enum | Restock Issue / Repair / General |
 | description | text | |
-| photo_url | text | |
 | status | enum | Open / Resolved |
+
+**note_photos**
+| field | type | notes |
+|---|---|---|
+| id | PK | |
+| note_id | FK -> notes | |
+| url | text | public Supabase Storage URL |
 
 **users**
 | field | type | notes |

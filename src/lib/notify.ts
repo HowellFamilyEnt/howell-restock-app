@@ -6,7 +6,7 @@ export type NotifyResult = {
   errors: string[];
 };
 
-async function sendEmail(to: string, subject: string, text: string): Promise<string | null> {
+export async function sendEmail(to: string, subject: string, text: string): Promise<string | null> {
   const credentials = await getEmailCredentials();
   if (!credentials) return "Email not configured";
 
