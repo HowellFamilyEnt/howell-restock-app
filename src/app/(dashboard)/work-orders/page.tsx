@@ -95,7 +95,7 @@ export default async function WorkOrdersPage({
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Create a work order now</h2>
-        <form action={createWorkOrderForPropertyAction} className="flex items-end gap-3">
+        <form action={createWorkOrderForPropertyAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
             <label className="text-sm font-medium text-gray-700">Property</label>
             <select

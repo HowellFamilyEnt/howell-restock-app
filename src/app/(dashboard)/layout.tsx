@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ACCESS_SECTIONS, ACCESS_COOKIE_NAME, sectionKeyForPath } from "@/lib/accessLinks";
+import MobileNav from "./MobileNav";
 
 const ALL_NAV_ITEMS = [
   { href: "/properties", label: "Properties" },
@@ -52,37 +52,21 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+      <header className="relative border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold text-gray-900">Howell Restock</span>
-            <nav className="flex gap-4 text-sm text-gray-600">
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href} className="hover:text-gray-900">
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-gray-600">
-            <span>{identityLabel}</span>
-            {exitHref ? (
-              <a href={exitHref} className="text-gray-500 hover:text-gray-900">
-                Exit
-              </a>
-            ) : (
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/login" });
-                }}
-              >
-                <button type="submit" className="text-gray-500 hover:text-gray-900">
-                  Sign out
-                </button>
-              </form>
-            )}
-          </div>
+          <MobileNav
+            navItems={navItems}
+            identityLabel={identityLabel}
+            exitHref={exitHref}
+            onSignOut={
+              exitHref
+                ? undefined
+                : async () => {
+                    "use server";
+                    await signOut({ redirectTo: "/login" });
+                  }
+            }
+          />
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>

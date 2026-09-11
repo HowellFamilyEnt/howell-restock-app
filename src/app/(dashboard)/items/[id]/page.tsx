@@ -26,7 +26,7 @@ export default async function ItemDetailPage({
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <form action={updateItem.bind(null, item.id)} className="grid grid-cols-2 gap-4">
+        <form action={updateItem.bind(null, item.id)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Name</label>
             <input
