@@ -202,6 +202,25 @@ par level/quantity per property for it, not one per room. Items with no
 room_groups set land in a trailing "Other" section rather than being
 dropped.
 
+### 3.13 Short-term rental license tracking
+License data (owner, license #, type, issue/expiration dates) lives on
+`properties` directly — deliberately independent of Hostaway, even though
+Hostaway has its own native `propertyLicenseNumber`/`propertyLicenseType`/
+`propertyLicenseExpirationDate` fields (confirmed live, 2026-09-10), so
+LTR/HUD-VASH properties are covered too and nobody has to remember to keep
+Hostaway's copy in sync. A **Licenses** page (nav + available as an access
+link section) lists every property grouped by `license_owner` — same
+grouped-table layout as item room grouping (3.12) — with every field
+except notes directly editable inline per row, no separate edit screen.
+Status (Active / Expiring Soon / Expired / Not Set) is computed from
+`license_expiration_date`, not stored. A daily Vercel Cron job
+(`vercel.json` -> `/api/cron/check-licenses`) emails the service admin
+(section 3.11's `service_admin_email`) a digest of anything expired or
+within 60 days of expiring; `license_alert_sent_for` stamps which
+expiration date was last alerted on so the same license doesn't re-alert
+every day of the window, and clears when the expiration date changes
+(a renewal) so it can alert again later.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -227,6 +246,12 @@ this becomes real database tables.
 | master_door_code | text, nullable | entered manually; never touched by Hostaway sync |
 | general_notes | text, nullable | free-form notes; entered manually; never touched by Hostaway sync |
 | assignedTeamMemberId | FK -> team_members, nullable | who work order links get sent to for this property |
+| license_owner | text, nullable | see section 3.13 |
+| license_number | text, nullable | |
+| license_type | text, nullable | |
+| license_issue_date | date, nullable | |
+| license_expiration_date | date, nullable | drives the Licenses page's computed status and the 60-day alert |
+| license_alert_sent_for | date, nullable | which `license_expiration_date` value was last alerted on; not shown in the UI |
 
 **items**
 | field | type | notes |
@@ -412,9 +437,24 @@ complexity, one operator maintaining it):
 Built out of order, at the user's explicit request, ahead of the phases
 above: item edit/deactivate/delete, Hostaway sync now also pulls
 address/bedrooms/bathrooms, master door code + general notes per property,
-and the Team & work order system (section 3.8) — including a crew-facing
+the Team & work order system (section 3.8) — including a crew-facing
 work order page, which is a lighter-weight stand-in for the full Field-role
-mobile view originally planned as Phase 2.
+mobile view originally planned as Phase 2 — and short-term rental license
+tracking with expiration alerts (section 3.13).
+
+Proposed, not yet built: a property onboarding page — enter address,
+bed/bath count, and standard amenities, and the app calls Hostaway's
+listing-creation API (`POST /v1/listings`) to create the listing, using
+sensible defaults for the boilerplate fields Hostaway requires (price,
+currency, guest counts, cancellation policy) so the user only has to add
+photos afterward. Deliberately scoped to skip Google Drive integration —
+Hostaway's image API needs stable public URLs, which Drive links don't
+reliably provide, and pulling photos from Drive would need a real OAuth
+flow (consent screen, token storage/refresh, folder picker) on top of
+re-hosting each photo through our own Supabase storage before handing
+Hostaway a URL. This creates a *draft* listing only — going live on
+channels (photos, description polish, channel connections) still happens
+in Hostaway's own editor.
 
 ## 9. Open Decisions (ask the user, don't assume)
 
