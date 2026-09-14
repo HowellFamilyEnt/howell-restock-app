@@ -221,6 +221,21 @@ expiration date was last alerted on so the same license doesn't re-alert
 every day of the window, and clears when the expiration date changes
 (a renewal) so it can alert again later.
 
+### 3.14 Cleaning link
+A single-purpose no-login form at `/cleaning/[token]` for the cleaning
+crew to flag an item that's out or running low without needing a work
+order: pick a property (dropdown sorted by street name, then house
+number — not by listing name, so it matches how the crew would look for
+an address on the street), describe what's needed, attach a photo
+optionally, submit. Deliberately has no dashboard nav tab and isn't part
+of `ACCESS_SECTIONS`/section-scoped access — it's its own boolean,
+`access_links.cleaning_enabled`, toggled via a separate "Cleaning"
+checkbox on the Settings page's access link form, independent of which
+(if any) `sections` are also checked. Each submission creates a
+standalone `notes` row (`work_order_id` null, `category` = Restock
+Issue) and emails the service admin immediately — not batched like the
+work-order-completion notes email in 3.11.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -355,7 +370,8 @@ this becomes real database tables.
 | id | PK | |
 | name | text | shown in the nav in place of an email for this session |
 | token | text, unique | unguessable; grants access to `/access/[token]` with no login |
-| sections | text array | which of Properties/Items/Log Restock/Calendar/Work Orders/Team it can see; Settings can never appear here |
+| sections | text array | which of Properties/Items/Log Restock/Calendar/Work Orders/Team/Licenses it can see; Settings can never appear here |
+| cleaning_enabled | bool | see section 3.14 — grants `/cleaning/[token]`, independent of `sections` |
 | active | bool | deactivating is reversible; deleting is not |
 
 ## 5. Dashboard Logic (per property)
