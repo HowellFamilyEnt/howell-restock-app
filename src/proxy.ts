@@ -12,13 +12,24 @@ export default auth((req) => {
   // /access/[token] and /access/exit set/clear the no-login section-access
   // cookie - see src/app/access/*/route.ts.
   const isAccessRoute = req.nextUrl.pathname.startsWith("/access/");
+  // /cleaning/[token] is the unauthenticated crew-facing "flag a low/out
+  // item" form - the token itself is the access control, not a session
+  // (see src/app/cleaning/[token]/page.tsx).
+  const isCleaningRoute = req.nextUrl.pathname.startsWith("/cleaning/");
   // Presence only - the (dashboard) layout does the real lookup (active?
   // which sections?) since that needs Prisma, which middleware shouldn't
   // do on every request. An invalid/expired token just bounces to /login
   // there.
   const hasAccessCookie = req.cookies.has(ACCESS_COOKIE_NAME);
 
-  if (!isLoggedIn && !isLoginPage && !isPublicWorkOrder && !isAccessRoute && !hasAccessCookie) {
+  if (
+    !isLoggedIn &&
+    !isLoginPage &&
+    !isPublicWorkOrder &&
+    !isAccessRoute &&
+    !isCleaningRoute &&
+    !hasAccessCookie
+  ) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }

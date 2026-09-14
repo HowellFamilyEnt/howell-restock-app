@@ -295,6 +295,13 @@ model AccessLink {
   name      String
   token     String   @unique
   sections  String[]
+  // Grants a second, separate no-login surface on the same token:
+  // /cleaning/[token] (src/app/cleaning/[token]/page.tsx) - a single
+  // chrome-less form (pick a property, note + photo, submit), independent
+  // of `sections`/ACCESS_SECTIONS since it deliberately has no dashboard
+  // nav tab. A link can have this on with an empty `sections` array (a
+  // pure cleaning-crew link with no dashboard access at all).
+  cleaning_enabled Boolean  @default(false)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

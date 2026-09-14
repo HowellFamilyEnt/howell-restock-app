@@ -169,6 +169,7 @@ export default async function SettingsPage() {
             name: l.name,
             token: l.token,
             sections: l.sections,
+            cleaning_enabled: l.cleaning_enabled,
             active: l.active,
           }))}
           baseUrl={baseUrl()}

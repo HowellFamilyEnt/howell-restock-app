@@ -74,3 +74,22 @@ export async function emailWorkOrderNotesToServiceAdmin(workOrderId: string): Pr
 
   await sendEmail(adminEmail, `Service note: ${propertyName}`, lines.join("\n"));
 }
+
+// Emails a single standalone note immediately, rather than waiting for a
+// work order to complete - used by the no-login /cleaning/[token] form
+// (see src/app/cleaning/[token]/actions.ts), which isn't tied to any work
+// order. Best-effort, same as emailWorkOrderNotesToServiceAdmin: a missing
+// setting shouldn't block the note from being saved.
+export async function emailCleaningNoteToServiceAdmin(
+  propertyName: string,
+  description: string,
+  photoUrls: string[]
+): Promise<void> {
+  const adminEmail = await getServiceAdminEmail();
+  if (!adminEmail) return;
+
+  const lines = [`Cleaning crew report at ${propertyName}:`, "", description];
+  for (const url of photoUrls) lines.push(`photo: ${url}`);
+
+  await sendEmail(adminEmail, `Cleaning report: ${propertyName}`, lines.join("\n"));
+}

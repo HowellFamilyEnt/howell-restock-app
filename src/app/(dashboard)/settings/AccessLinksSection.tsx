@@ -9,6 +9,7 @@ type AccessLinkRow = {
   name: string;
   token: string;
   sections: string[];
+  cleaning_enabled: boolean;
   active: boolean;
 };
 
@@ -29,9 +30,10 @@ export default function AccessLinksSection({
                 <div>
                   <p className="font-medium text-gray-900">{link.name}</p>
                   <p className="text-xs text-gray-500">
-                    {link.sections
-                      .map((key) => ACCESS_SECTIONS.find((s) => s.key === key)?.label ?? key)
-                      .join(", ")}
+                    {[
+                      ...link.sections.map((key) => ACCESS_SECTIONS.find((s) => s.key === key)?.label ?? key),
+                      ...(link.cleaning_enabled ? ["Cleaning"] : []),
+                    ].join(", ")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -47,11 +49,23 @@ export default function AccessLinksSection({
                   </form>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 truncate rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                  {baseUrl}/access/{link.token}
-                </code>
-                <CopyLinkButton link={`${baseUrl}/access/${link.token}`} />
+              <div className="space-y-2">
+                {link.sections.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      {baseUrl}/access/{link.token}
+                    </code>
+                    <CopyLinkButton link={`${baseUrl}/access/${link.token}`} />
+                  </div>
+                )}
+                {link.cleaning_enabled && (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      {baseUrl}/cleaning/{link.token}
+                    </code>
+                    <CopyLinkButton link={`${baseUrl}/cleaning/${link.token}`} />
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -77,7 +91,15 @@ export default function AccessLinksSection({
                 {section.label}
               </label>
             ))}
+            <label className="flex items-center gap-1.5 text-sm text-gray-700">
+              <input type="checkbox" name="cleaning_enabled" />
+              Cleaning
+            </label>
           </div>
+          <p className="text-xs text-gray-400">
+            Cleaning is a separate, single-purpose link — pick a property, note what&apos;s needed, add a
+            photo, submit. No dashboard tab, doesn&apos;t require any sections above to also be checked.
+          </p>
         </div>
         <button
           type="submit"

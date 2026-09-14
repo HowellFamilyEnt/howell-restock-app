@@ -54,14 +54,17 @@ const VALID_SECTION_KEYS = new Set<string>(ACCESS_SECTIONS.map((s) => s.key));
 export async function createAccessLink(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const sections = formData.getAll("sections").map(String).filter((s) => VALID_SECTION_KEYS.has(s));
+  const cleaning_enabled = formData.get("cleaning_enabled") === "on";
 
   if (!name) throw new Error("Name is required.");
-  if (sections.length === 0) throw new Error("Pick at least one section.");
+  if (sections.length === 0 && !cleaning_enabled) {
+    throw new Error("Pick at least one section, or check Cleaning.");
+  }
 
   const token = crypto.randomBytes(24).toString("hex");
 
   await prisma.accessLink.create({
-    data: { name, token, sections },
+    data: { name, token, sections, cleaning_enabled },
   });
 
   revalidatePath("/settings");
