@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { computeLicenseStatus, LICENSE_ALERT_WINDOW_DAYS, type LicenseStatus } from "@/lib/licenses";
+import { updateLicenseInfo } from "../properties/[id]/actions";
 import CheckLicensesButton from "./CheckLicensesButton";
 
 const TABS = [
@@ -25,6 +26,19 @@ const statusLabels: Record<LicenseStatus, string> = {
   NotSet: "Not set",
 };
 
+type Row = {
+  id: string;
+  name: string;
+  owner: string | null;
+  number: string | null;
+  type: string | null;
+  issueDate: string | null;
+  expirationDate: string | null;
+  status: LicenseStatus;
+};
+
+const UNASSIGNED_GROUP = "No owner set";
+
 export default async function LicensesPage({
   searchParams,
 }: {
@@ -34,16 +48,17 @@ export default async function LicensesPage({
   const view = status ?? "all";
 
   const properties = await prisma.property.findMany({
-    orderBy: [{ license_expiration_date: { sort: "asc", nulls: "last" } }, { name_address: "asc" }],
+    orderBy: [{ license_owner: "asc" }, { name_address: "asc" }],
   });
 
-  const rows = properties.map((p) => ({
+  const rows: Row[] = properties.map((p) => ({
     id: p.id,
     name: p.name_address,
     owner: p.license_owner,
     number: p.license_number,
     type: p.license_type,
-    expires: p.license_expiration_date ? p.license_expiration_date.toISOString().slice(0, 10) : null,
+    issueDate: p.license_issue_date ? p.license_issue_date.toISOString().slice(0, 10) : null,
+    expirationDate: p.license_expiration_date ? p.license_expiration_date.toISOString().slice(0, 10) : null,
     status: computeLicenseStatus(p.license_expiration_date),
   }));
 
@@ -57,14 +72,26 @@ export default async function LicensesPage({
 
   const filtered = view === "all" ? rows : rows.filter((r) => r.status === view);
 
+  const groups = new Map<string, Row[]>();
+  for (const row of filtered) {
+    const key = row.owner?.trim() || UNASSIGNED_GROUP;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(row);
+  }
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => {
+    if (a === UNASSIGNED_GROUP) return 1;
+    if (b === UNASSIGNED_GROUP) return -1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Licenses</h1>
           <p className="text-sm text-gray-500">
-            Short-term rental license status across all properties. Alerts go out{" "}
-            {LICENSE_ALERT_WINDOW_DAYS} days before expiration.
+            Short-term rental license status, grouped by owner. Alerts go out {LICENSE_ALERT_WINDOW_DAYS}{" "}
+            days before expiration.
           </p>
         </div>
         <CheckLicensesButton />
@@ -86,79 +113,159 @@ export default async function LicensesPage({
         ))}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-lg border border-gray-200 bg-white md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-2">Property</th>
-              <th className="px-4 py-2">Owner</th>
-              <th className="px-4 py-2">License #</th>
-              <th className="px-4 py-2">Type</th>
-              <th className="px-4 py-2">Expires</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map((row) => (
-              <tr key={row.id}>
-                <td className="px-4 py-2 font-medium text-gray-900">{row.name}</td>
-                <td className="px-4 py-2 text-gray-600">{row.owner ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{row.number ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{row.type ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{row.expires ?? "—"}</td>
-                <td className="px-4 py-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[row.status]}`}>
-                    {statusLabels[row.status]}
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <Link href={`/properties/${row.id}`} className="text-xs font-medium text-gray-600 hover:text-gray-900">
-                    Edit →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
-                  No properties in this view.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {groupKeys.length === 0 && (
+        <p className="rounded-lg border border-gray-200 bg-white px-4 py-6 text-center text-gray-400">
+          No properties in this view.
+        </p>
+      )}
 
-      <div className="space-y-3 md:hidden">
-        {filtered.map((row) => (
-          <Link
-            key={row.id}
-            href={`/properties/${row.id}`}
-            className="block rounded-lg border border-gray-200 bg-white p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <span className="font-medium text-gray-900">{row.name}</span>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[row.status]}`}>
-                {statusLabels[row.status]}
-              </span>
+      {groupKeys.map((owner) => {
+        const groupRows = groups.get(owner)!;
+        return (
+          <div key={owner} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-900">
+              {owner} <span className="font-normal text-gray-400">({groupRows.length})</span>
+            </h2>
+
+            <div className="hidden overflow-x-auto md:block">
+              <div className="min-w-[900px]">
+                <div className="grid grid-cols-[1.4fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_auto] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-left text-xs uppercase text-gray-500">
+                  <span>Property</span>
+                  <span>Owner</span>
+                  <span>License #</span>
+                  <span>Type</span>
+                  <span>Issue date</span>
+                  <span>Expiration date</span>
+                  <span>Status</span>
+                  <span></span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {groupRows.map((row) => (
+                    <form
+                      key={row.id}
+                      action={updateLicenseInfo.bind(null, row.id)}
+                      className="grid grid-cols-[1.4fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_auto] items-center gap-2 px-4 py-2"
+                    >
+                      <Link href={`/properties/${row.id}`} className="truncate text-sm font-medium text-gray-900 hover:underline">
+                        {row.name}
+                      </Link>
+                      <input
+                        name="license_owner"
+                        defaultValue={row.owner ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        name="license_number"
+                        defaultValue={row.number ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        name="license_type"
+                        defaultValue={row.type ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        name="license_issue_date"
+                        type="date"
+                        defaultValue={row.issueDate ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        name="license_expiration_date"
+                        type="date"
+                        defaultValue={row.expirationDate ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      />
+                      <span
+                        className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[row.status]}`}
+                      >
+                        {statusLabels[row.status]}
+                      </span>
+                      <button
+                        type="submit"
+                        className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
-              <span>Owner: {row.owner ?? "—"}</span>
-              <span>License: {row.number ?? "—"}</span>
+
+            <div className="space-y-3 p-3 md:hidden">
+              {groupRows.map((row) => (
+                <form
+                  key={row.id}
+                  action={updateLicenseInfo.bind(null, row.id)}
+                  className="space-y-2 rounded-lg border border-gray-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/properties/${row.id}`} className="font-medium text-gray-900 hover:underline">
+                      {row.name}
+                    </Link>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[row.status]}`}
+                    >
+                      {statusLabels[row.status]}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Owner</label>
+                    <input
+                      name="license_owner"
+                      defaultValue={row.owner ?? ""}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">License number</label>
+                    <input
+                      name="license_number"
+                      defaultValue={row.number ?? ""}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Type</label>
+                    <input
+                      name="license_type"
+                      defaultValue={row.type ?? ""}
+                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-700">Issue date</label>
+                      <input
+                        name="license_issue_date"
+                        type="date"
+                        defaultValue={row.issueDate ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-700">Expiration date</label>
+                      <input
+                        name="license_expiration_date"
+                        type="date"
+                        defaultValue={row.expirationDate ?? ""}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
+                  >
+                    Save
+                  </button>
+                </form>
+              ))}
             </div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-              <span>{row.type ?? "No type set"}</span>
-              <span>Expires: {row.expires ?? "—"}</span>
-            </div>
-          </Link>
-        ))}
-        {filtered.length === 0 && (
-          <p className="rounded-lg border border-gray-200 bg-white px-4 py-6 text-center text-gray-400">
-            No properties in this view.
-          </p>
-        )}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
