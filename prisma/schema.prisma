@@ -63,6 +63,20 @@ model Property {
   source                   PropertySource @default(Manual)
   assignedTeamMemberId     String?
 
+  // Short-term rental license tracking - independent of Hostaway (covers
+  // LTR/HUD-VASH properties too, and doesn't depend on anyone remembering to
+  // update Hostaway's own license fields). license_alert_sent_for records
+  // the expiration_date value we last emailed a warning for, so the daily
+  // check (src/lib/licenses.ts) sends one alert per license, not one per
+  // day for the whole 60-day window - it's cleared to null wherever the
+  // expiration date is updated.
+  license_owner            String?
+  license_number           String?
+  license_type             String?
+  license_issue_date       DateTime?
+  license_expiration_date  DateTime?
+  license_alert_sent_for   DateTime?
+
   parLevels          ParLevel[]
   restockEvents      RestockEvent[]
   notes              Note[]

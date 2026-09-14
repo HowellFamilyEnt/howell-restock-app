@@ -78,6 +78,43 @@ export async function updateAssignedTeamMember(propertyId: string, formData: For
   revalidatePath(`/properties/${propertyId}`);
 }
 
+export async function updateLicenseInfo(propertyId: string, formData: FormData) {
+  const license_owner = String(formData.get("license_owner") ?? "").trim();
+  const license_number = String(formData.get("license_number") ?? "").trim();
+  const license_type = String(formData.get("license_type") ?? "").trim();
+  const issueDateRaw = String(formData.get("license_issue_date") ?? "").trim();
+  const expirationDateRaw = String(formData.get("license_expiration_date") ?? "").trim();
+
+  const license_issue_date = issueDateRaw ? new Date(`${issueDateRaw}T00:00:00Z`) : null;
+  const license_expiration_date = expirationDateRaw ? new Date(`${expirationDateRaw}T00:00:00Z`) : null;
+
+  const current = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { license_expiration_date: true },
+  });
+  const expirationChanged =
+    current?.license_expiration_date?.getTime() !== license_expiration_date?.getTime();
+
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: {
+      license_owner: license_owner || null,
+      license_number: license_number || null,
+      license_type: license_type || null,
+      license_issue_date,
+      license_expiration_date,
+      // Renewing the license (a new expiration date) should be able to
+      // trigger a fresh alert as the new date approaches - see
+      // src/lib/licenses.ts.
+      ...(expirationChanged ? { license_alert_sent_for: null } : {}),
+    },
+  });
+
+  revalidatePath("/properties");
+  revalidatePath("/licenses");
+  revalidatePath(`/properties/${propertyId}`);
+}
+
 export async function createWorkOrderAction(propertyId: string, formData: FormData) {
   const session = await auth();
   const dueDateRaw = String(formData.get("due_date") ?? "").trim();

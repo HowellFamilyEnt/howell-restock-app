@@ -12,6 +12,7 @@ const ALL_NAV_ITEMS = [
   { href: "/calendar", label: "Calendar" },
   { href: "/work-orders", label: "Work Orders" },
   { href: "/team", label: "Team" },
+  { href: "/licenses", label: "Licenses" },
 ];
 
 export default async function DashboardLayout({

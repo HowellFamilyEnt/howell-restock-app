@@ -7,9 +7,25 @@ import {
   updateMasterDoorCode,
   updateGeneralNotes,
   updateAssignedTeamMember,
+  updateLicenseInfo,
   createWorkOrderAction,
 } from "./actions";
 import { groupByRoom } from "@/lib/roomGroups";
+import { computeLicenseStatus } from "@/lib/licenses";
+
+const licenseStatusStyles: Record<string, string> = {
+  Active: "bg-green-100 text-green-700",
+  ExpiringSoon: "bg-amber-100 text-amber-700",
+  Expired: "bg-red-100 text-red-700",
+  NotSet: "bg-gray-100 text-gray-500",
+};
+
+const licenseStatusLabels: Record<string, string> = {
+  Active: "Active",
+  ExpiringSoon: "Expiring soon",
+  Expired: "Expired",
+  NotSet: "Not set",
+};
 
 export default async function PropertyDetailPage({
   params,
@@ -37,6 +53,7 @@ export default async function PropertyDetailPage({
   ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
+  const licenseStatus = computeLicenseStatus(property.license_expiration_date);
 
   return (
     <div className="space-y-6">
@@ -150,6 +167,71 @@ export default async function PropertyDetailPage({
           >
             Save
           </button>
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="text-sm font-semibold text-gray-900">Short-term rental license</h2>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${licenseStatusStyles[licenseStatus]}`}>
+            {licenseStatusLabels[licenseStatus]}
+          </span>
+        </div>
+        <form
+          action={updateLicenseInfo.bind(null, property.id)}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+        >
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Owner</label>
+            <input
+              name="license_owner"
+              defaultValue={property.license_owner ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">License number</label>
+            <input
+              name="license_number"
+              defaultValue={property.license_number ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">License type</label>
+            <input
+              name="license_type"
+              placeholder="e.g. STR Permit"
+              defaultValue={property.license_type ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Issue date</label>
+            <input
+              name="license_issue_date"
+              type="date"
+              defaultValue={property.license_issue_date?.toISOString().slice(0, 10) ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Expiration date</label>
+            <input
+              name="license_expiration_date"
+              type="date"
+              defaultValue={property.license_expiration_date?.toISOString().slice(0, 10) ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Save
+            </button>
+          </div>
         </form>
       </div>
 

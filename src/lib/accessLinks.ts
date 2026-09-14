@@ -11,6 +11,7 @@ export const ACCESS_SECTIONS = [
   { key: "calendar", label: "Calendar", path: "/calendar" },
   { key: "workorders", label: "Work Orders", path: "/work-orders" },
   { key: "team", label: "Team", path: "/team" },
+  { key: "licenses", label: "Licenses", path: "/licenses" },
 ] as const;
 
 export type SectionKey = (typeof ACCESS_SECTIONS)[number]["key"];
