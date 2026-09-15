@@ -3,6 +3,8 @@ import Link from "next/link";
 import { computeLicenseStatus, LICENSE_ALERT_WINDOW_DAYS, type LicenseStatus } from "@/lib/licenses";
 import { updateLicenseInfo } from "../properties/[id]/actions";
 import CheckLicensesButton from "./CheckLicensesButton";
+import CheckHostawayLicensesButton from "./CheckHostawayLicensesButton";
+import OwnerField from "./OwnerField";
 
 const TABS = [
   { key: "all", label: "All" },
@@ -72,6 +74,10 @@ export default async function LicensesPage({
 
   const filtered = view === "all" ? rows : rows.filter((r) => r.status === view);
 
+  const allOwners = Array.from(new Set(rows.map((r) => r.owner).filter((o): o is string => !!o))).sort(
+    (a, b) => a.localeCompare(b)
+  );
+
   const groups = new Map<string, Row[]>();
   for (const row of filtered) {
     const key = row.owner?.trim() || UNASSIGNED_GROUP;
@@ -94,8 +100,17 @@ export default async function LicensesPage({
             days before expiration.
           </p>
         </div>
-        <CheckLicensesButton />
+        <div className="flex items-start gap-3">
+          <CheckLicensesButton />
+          <CheckHostawayLicensesButton />
+        </div>
       </div>
+
+      <p className="text-xs text-gray-400">
+        &ldquo;Check against Hostaway&rdquo; pushes any license here into the matching Hostaway listing so
+        it flows to Airbnb from there. Hostaway&apos;s docs say Airbnb can take 2&ndash;3 days to review
+        and show license/permit changes once sent — it won&apos;t appear on Airbnb instantly.
+      </p>
 
       <div className="flex flex-wrap gap-2 text-sm">
         {TABS.map((tab) => (
@@ -149,11 +164,7 @@ export default async function LicensesPage({
                       <Link href={`/properties/${row.id}`} className="truncate text-sm font-medium text-gray-900 hover:underline">
                         {row.name}
                       </Link>
-                      <input
-                        name="license_owner"
-                        defaultValue={row.owner ?? ""}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                      />
+                      <OwnerField owners={allOwners} defaultValue={row.owner ?? ""} />
                       <input
                         name="license_number"
                         defaultValue={row.number ?? ""}
@@ -212,11 +223,7 @@ export default async function LicensesPage({
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700">Owner</label>
-                    <input
-                      name="license_owner"
-                      defaultValue={row.owner ?? ""}
-                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    />
+                    <OwnerField owners={allOwners} defaultValue={row.owner ?? ""} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-gray-700">License number</label>

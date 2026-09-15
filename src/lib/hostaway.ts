@@ -159,6 +159,62 @@ function mapListing(listing: HostawayListing): MappedListing {
   };
 }
 
+export type HostawayListingLicenseFields = {
+  propertyLicenseNumber: string | null;
+  propertyLicenseType: string | null;
+  propertyLicenseIssueDate: string | null; // YYYY-MM-DD
+  propertyLicenseExpirationDate: string | null;
+};
+
+// Confirmed live (2026-09-14) against a real listing: these four fields
+// are already populated in this account and show up on the live Airbnb
+// listing page under "Registration Details" once exported - see
+// src/lib/licenses.ts for the push side that keeps them in sync with our
+// own license_* fields on Property.
+export async function fetchListingLicenseFields(
+  token: string,
+  hostawayListingId: string
+): Promise<HostawayListingLicenseFields> {
+  const res = await fetch(`${LISTINGS_URL}/${hostawayListingId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Hostaway listing fetch failed: ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as { result: Record<string, unknown> };
+  const listing = data.result;
+  return {
+    propertyLicenseNumber: (listing.propertyLicenseNumber as string | null) ?? null,
+    propertyLicenseType: (listing.propertyLicenseType as string | null) ?? null,
+    propertyLicenseIssueDate: (listing.propertyLicenseIssueDate as string | null) ?? null,
+    propertyLicenseExpirationDate: (listing.propertyLicenseExpirationDate as string | null) ?? null,
+  };
+}
+
+// Confirmed via Hostaway's public API docs: PUT /v1/listings/{id} accepts
+// a partial object - only the fields being changed need to be passed.
+// Whether this alone re-exports to Airbnb (vs. needing the dashboard's
+// separate "Save & Export" / "Export Listing" action) isn't documented -
+// see the caveat surfaced on the Licenses page's sync button.
+export async function updateListingLicenseFields(
+  token: string,
+  hostawayListingId: string,
+  fields: Partial<HostawayListingLicenseFields>
+): Promise<void> {
+  const res = await fetch(`${LISTINGS_URL}/${hostawayListingId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Hostaway listing update failed: ${res.status} ${body.slice(0, 200)}`);
+  }
+}
+
 export type HostawaySyncResult = {
   created: number;
   updated: number;

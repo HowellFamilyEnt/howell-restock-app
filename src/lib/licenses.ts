@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/notify";
-import { getServiceAdminEmail } from "@/lib/settings";
+import { getServiceAdminEmail, getHostawayCredentials } from "@/lib/settings";
+import {
+  getAccessToken,
+  fetchListingLicenseFields,
+  updateListingLicenseFields,
+  type HostawayListingLicenseFields,
+} from "@/lib/hostaway";
 
 export const LICENSE_ALERT_WINDOW_DAYS = 60;
 
@@ -73,6 +79,113 @@ export async function checkExpiringLicenses(): Promise<LicenseCheckResult> {
     )
   );
   result.alerted = due.length;
+
+  return result;
+}
+
+export type HostawayLicenseSyncResult = {
+  checked: number;
+  updated: number;
+  skippedNoHostawayListing: number;
+  errors: string[];
+};
+
+function dateToYmd(date: Date | null): string | null {
+  return date ? date.toISOString().slice(0, 10) : null;
+}
+
+// A short pause between each Hostaway request (not each property, since
+// a changed property makes 2 - fetch, then update) - Hostaway allows 15
+// req/10s per IP, so ~700ms keeps a safety margin under that while
+// keeping this reasonably fast for a manual button with a lot of
+// properties to check.
+const REQUEST_SPACING_MS = 700;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Pushes our license data into each Hostaway-sourced property's listing,
+// but only for properties where we actually have license data set - never
+// clears a Hostaway field just because ours is blank. Skips properties
+// with no hostaway_listing_id (LTR/HUD-VASH, or manually-entered STR
+// properties) since there's no Hostaway listing to update.
+//
+// Whether Hostaway's PUT /v1/listings/{id} alone re-exports the change to
+// Airbnb, or needs the dashboard's separate "Save & Export"/"Export
+// Listing" action too, isn't documented - see the caveat on the Licenses
+// page. Even once exported, Hostaway's own docs say Airbnb's review of
+// license/permit data can take 2-3 days before it's reflected there.
+export async function syncLicensesToHostaway(): Promise<HostawayLicenseSyncResult> {
+  const credentials = await getHostawayCredentials();
+  if (!credentials) {
+    throw new Error(
+      "No Hostaway credentials configured. Add them on the Settings page, or set HOSTAWAY_ACCOUNT_ID and HOSTAWAY_API_KEY as environment variables."
+    );
+  }
+
+  const properties = await prisma.property.findMany({
+    where: {
+      OR: [
+        { license_number: { not: null } },
+        { license_type: { not: null } },
+        { license_issue_date: { not: null } },
+        { license_expiration_date: { not: null } },
+      ],
+    },
+  });
+
+  const result: HostawayLicenseSyncResult = {
+    checked: properties.length,
+    updated: 0,
+    skippedNoHostawayListing: 0,
+    errors: [],
+  };
+  if (properties.length === 0) return result;
+
+  const token = await getAccessToken(credentials.accountId, credentials.apiKey);
+
+  for (const property of properties) {
+    if (!property.hostaway_listing_id) {
+      result.skippedNoHostawayListing += 1;
+      continue;
+    }
+
+    try {
+      const current = await fetchListingLicenseFields(token, property.hostaway_listing_id);
+      await sleep(REQUEST_SPACING_MS);
+
+      const diffs: Partial<HostawayListingLicenseFields> = {};
+      if (property.license_number && property.license_number !== (current.propertyLicenseNumber ?? null)) {
+        diffs.propertyLicenseNumber = property.license_number;
+      }
+      if (property.license_type && property.license_type !== (current.propertyLicenseType ?? null)) {
+        diffs.propertyLicenseType = property.license_type;
+      }
+      // propertyLicenseIssueDate is deliberately never synced - our
+      // license_issue_date was imported as the spreadsheet's "Effective
+      // Date" column, while Hostaway's field tracks "Date Issued"; those
+      // can differ by months, and overwriting Hostaway's real issue dates
+      // with a different date isn't something to do silently. Number,
+      // type, and expiration date are unambiguous enough to sync.
+      const ourExpirationDate = dateToYmd(property.license_expiration_date);
+      if (
+        ourExpirationDate &&
+        ourExpirationDate !== (current.propertyLicenseExpirationDate?.slice(0, 10) ?? null)
+      ) {
+        diffs.propertyLicenseExpirationDate = ourExpirationDate;
+      }
+
+      if (Object.keys(diffs).length > 0) {
+        await updateListingLicenseFields(token, property.hostaway_listing_id, diffs);
+        result.updated += 1;
+        await sleep(REQUEST_SPACING_MS);
+      }
+    } catch (error) {
+      result.errors.push(
+        `${property.name_address}: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
 
   return result;
 }
