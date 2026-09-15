@@ -6,6 +6,33 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { createWorkOrderForProperty } from "@/lib/workorders";
 
+// Refuses to hard-delete a property that has real history (restock
+// events, notes, work orders) - only par levels (just config, not
+// history) don't block it. Same guard pattern as deleteItem in
+// src/app/(dashboard)/items/actions.ts. For a Hostaway-sourced property
+// still active in Hostaway, archiving (togglePropertyActive) is the
+// right move instead - deleting doesn't stick if Sync from Hostaway
+// runs again while the listing still exists there.
+export async function deleteProperty(
+  propertyId: string,
+  _prevState: string | undefined,
+  _formData: FormData
+): Promise<string> {
+  const [restockCount, noteCount, workOrderCount] = await Promise.all([
+    prisma.restockEvent.count({ where: { property_id: propertyId } }),
+    prisma.note.count({ where: { property_id: propertyId } }),
+    prisma.workOrder.count({ where: { property_id: propertyId } }),
+  ]);
+
+  if (restockCount > 0 || noteCount > 0 || workOrderCount > 0) {
+    return "Can't delete — this property has restock history, notes, or work orders. Archive it instead to keep that history intact.";
+  }
+
+  await prisma.property.delete({ where: { id: propertyId } });
+  revalidatePath("/properties");
+  redirect("/properties");
+}
+
 export async function setParLevel(propertyId: string, itemId: string, formData: FormData) {
   const target_qty = Number(formData.get("target_qty"));
   if (!Number.isFinite(target_qty) || target_qty < 0) {

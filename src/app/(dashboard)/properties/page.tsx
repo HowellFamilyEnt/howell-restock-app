@@ -6,8 +6,16 @@ import CreatableGroupSelect from "@/components/CreatableGroupSelect";
 
 const AREA_UNASSIGNED = "No area set";
 
-export default async function PropertiesPage() {
+export default async function PropertiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show?: string }>;
+}) {
+  const { show } = await searchParams;
+  const showInactive = show === "all";
+
   const properties = await prisma.property.findMany({
+    where: showInactive ? {} : { active: true },
     orderBy: { name_address: "asc" },
   });
 
@@ -34,7 +42,15 @@ export default async function PropertiesPage() {
           <h1 className="text-lg font-semibold text-gray-900">Properties</h1>
           <p className="text-sm text-gray-500">{properties.length} total</p>
         </div>
-        <HostawaySyncButton />
+        <div className="flex items-center gap-3">
+          <Link
+            href={showInactive ? "/properties" : "/properties?show=all"}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            {showInactive ? "Hide archived" : "Show archived"}
+          </Link>
+          <HostawaySyncButton />
+        </div>
       </div>
 
       {groupKeys.length === 0 && (
@@ -60,7 +76,7 @@ export default async function PropertiesPage() {
                     <th className="px-4 py-2">Beds/Baths</th>
                     <th className="px-4 py-2">Area</th>
                     <th className="px-4 py-2">Crew</th>
-                    <th className="px-4 py-2">Active</th>
+                    <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2"></th>
                   </tr>
                 </thead>
@@ -103,7 +119,7 @@ export default async function PropertiesPage() {
                       <td className="px-4 py-2">
                         <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
                           <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
-                            {property.active ? "Active" : "Inactive"}
+                            {property.active ? "Archive" : "Restore"}
                           </button>
                         </form>
                       </td>
@@ -159,7 +175,7 @@ export default async function PropertiesPage() {
                   <div className="mt-3 flex items-center justify-between">
                     <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
                       <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
-                        {property.active ? "Active" : "Inactive"}
+                        {property.active ? "Archive" : "Restore"}
                       </button>
                     </form>
                     <Link

@@ -10,8 +10,10 @@ import {
   updateLicenseInfo,
   createWorkOrderAction,
 } from "./actions";
+import { togglePropertyActive } from "../actions";
 import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
+import DeletePropertyButton from "./DeletePropertyButton";
 
 const licenseStatusStyles: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
@@ -366,6 +368,37 @@ export default async function PropertyDetailPage({
           </div>
         ))
       )}
+
+      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">
+            {property.active ? "Archive this property" : "Restore this property"}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {property.active
+              ? "Hides it from the Properties page by default and stops it from generating new work orders, without deleting its history. Safe for a property still in Hostaway that you no longer manage — archiving survives a future Hostaway sync."
+              : "Makes it active again — visible on the Properties page and eligible for new work orders."}
+          </p>
+        </div>
+        <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
+          <button
+            type="submit"
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            {property.active ? "Archive" : "Restore"}
+          </button>
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Delete permanently</h2>
+        <p className="mb-3 text-sm text-gray-500">
+          Only possible if this property has no restock history, notes, or work orders — otherwise
+          archive it instead to keep that history intact. If this property still exists in Hostaway,
+          deleting it here won&apos;t stick if Sync from Hostaway runs again — archive it instead.
+        </p>
+        <DeletePropertyButton propertyId={property.id} />
+      </div>
     </div>
   );
 }
