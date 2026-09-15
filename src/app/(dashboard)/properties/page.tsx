@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { createProperty, toggleUrgent, togglePropertyActive, updateArea } from "./actions";
+import { createProperty, togglePropertyActive, updateArea } from "./actions";
 import HostawaySyncButton from "./HostawaySyncButton";
 import CreatableGroupSelect from "@/components/CreatableGroupSelect";
 
@@ -60,8 +60,6 @@ export default async function PropertiesPage() {
                     <th className="px-4 py-2">Beds/Baths</th>
                     <th className="px-4 py-2">Area</th>
                     <th className="px-4 py-2">Crew</th>
-                    <th className="px-4 py-2">Cadence (days)</th>
-                    <th className="px-4 py-2">Urgent</th>
                     <th className="px-4 py-2">Active</th>
                     <th className="px-4 py-2"></th>
                   </tr>
@@ -102,21 +100,6 @@ export default async function PropertiesPage() {
                         </form>
                       </td>
                       <td className="px-4 py-2 text-gray-600">{property.assigned_cleaning_team ?? "—"}</td>
-                      <td className="px-4 py-2 text-gray-600">{property.restock_frequency_days}</td>
-                      <td className="px-4 py-2">
-                        <form action={toggleUrgent.bind(null, property.id, !property.urgent_restock_requested)}>
-                          <button
-                            type="submit"
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              property.urgent_restock_requested
-                                ? "bg-red-100 text-red-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {property.urgent_restock_requested ? "URGENT" : "—"}
-                          </button>
-                        </form>
-                      </td>
                       <td className="px-4 py-2">
                         <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
                           <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
@@ -144,28 +127,15 @@ export default async function PropertiesPage() {
                   key={property.id}
                   className={`rounded-lg border border-gray-200 bg-white p-4 ${property.active ? "" : "opacity-50"}`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 hover:underline">
-                      {property.name_address}
-                    </Link>
-                    <form action={toggleUrgent.bind(null, property.id, !property.urgent_restock_requested)}>
-                      <button
-                        type="submit"
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          property.urgent_restock_requested ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {property.urgent_restock_requested ? "URGENT" : "—"}
-                      </button>
-                    </form>
-                  </div>
+                  <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 hover:underline">
+                    {property.name_address}
+                  </Link>
                   {property.address && <p className="mt-1 text-sm text-gray-500">{property.address}</p>}
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span>
                       {property.bedrooms ?? "—"}bd / {property.bathrooms ?? "—"}ba
                     </span>
                     <span>Crew: {property.assigned_cleaning_team ?? "—"}</span>
-                    <span>Every {property.restock_frequency_days}d</span>
                   </div>
                   <form
                     action={updateArea.bind(null, property.id)}
