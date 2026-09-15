@@ -52,6 +52,15 @@ export async function toggleUrgent(propertyId: string, next: boolean) {
   revalidatePath("/properties");
 }
 
+export async function updateArea(propertyId: string, formData: FormData) {
+  const area = String(formData.get("area") ?? "").trim();
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { area: area || null },
+  });
+  revalidatePath("/properties");
+}
+
 export async function togglePropertyActive(propertyId: string, next: boolean) {
   await prisma.property.update({
     where: { id: propertyId },

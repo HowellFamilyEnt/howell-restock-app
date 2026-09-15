@@ -62,6 +62,11 @@ model Property {
   hostaway_listing_id      String?        @unique
   source                   PropertySource @default(Manual)
   assignedTeamMemberId     String?
+  // Free-form grouping label for the Properties page (src/app/(dashboard)/properties/page.tsx)
+  // - e.g. a neighborhood or region. Purely organizational, derived groups
+  // (like license_owner), no separate table - picking/typing a value on
+  // any property creates or moves it into that group automatically.
+  area                     String?
 
   // Short-term rental license tracking - independent of Hostaway (covers
   // LTR/HUD-VASH properties too, and doesn't depend on anyone remembering to
