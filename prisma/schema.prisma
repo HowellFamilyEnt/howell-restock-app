@@ -291,6 +291,41 @@ model IntegrationSettings {
   @@map("integration_settings")
 }
 
+// Reusable defaults for creating a new Hostaway listing (src/app/(dashboard)/listings/new)
+// - everything that's typically the same across properties (amenities,
+// pricing defaults, cancellation policy, etc.), separate from the
+// property-specific fields (address, bed/bath count, name) entered per
+// listing. All nullable except name so a template can be saved partial.
+model ListingTemplate {
+  id                        String   @id @default(cuid())
+  name                      String
+  currency_code             String?
+  price                     Decimal? @db.Decimal(10, 2)
+  price_for_extra_person    Decimal? @db.Decimal(10, 2)
+  guests_included           Int?
+  cleaning_fee               Decimal? @db.Decimal(10, 2)
+  refundable_damage_deposit Decimal? @db.Decimal(10, 2)
+  cancellation_policy       String? // flexible / moderate / firm / strict / no_refund
+  check_in_time_start       String? // "15:00" style
+  check_in_time_end         String?
+  check_out_time            String?
+  min_nights                Int?
+  max_nights                Int?
+  instant_bookable          Boolean  @default(true)
+  house_rules               String?
+  amenity_ids               Int[]    @default([]) // Hostaway amenity ids, see fetchHostawayAmenities
+  // Mail-merge text for the auto-filled description - supports
+  // {bedrooms} {bathrooms} {city} {state} {amenities} placeholders,
+  // filled in client-side (NewListingForm.tsx) when this template is
+  // selected. No AI/external API involved.
+  description_template      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("listing_templates")
+}
+
 // A shareable, no-login URL (/access/[token]) that grants whichever
 // sections are listed in `sections` - see src/lib/accessLinks.ts for the
 // canonical section list. Deliberately cannot grant Settings access (that

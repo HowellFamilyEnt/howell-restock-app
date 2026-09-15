@@ -13,6 +13,8 @@ const ALL_NAV_ITEMS = [
   { href: "/work-orders", label: "Work Orders" },
   { href: "/team", label: "Team" },
   { href: "/licenses", label: "Licenses" },
+  { href: "/listings/new", label: "New Listing" },
+  { href: "/templates", label: "Templates" },
 ];
 
 export default async function DashboardLayout({

@@ -215,6 +215,139 @@ export async function updateListingLicenseFields(
   }
 }
 
+// The exact 5 values Hostaway's API accepts for cancellationPolicy -
+// anything else is rejected with a validation error (confirmed via
+// api.hostaway.com/documentation).
+export const CANCELLATION_POLICIES = ["flexible", "moderate", "firm", "strict", "no_refund"] as const;
+
+export type HostawayAmenity = { id: number; name: string };
+
+// GET /v1/amenities - undocumented in Hostaway's public API reference but
+// confirmed working live (2026-09-15) and matches the amenityId taxonomy
+// a real listing's own listingAmenities array uses (e.g. {"amenityId":2}
+// = "Internet"). No filtering/pagination needed - the account's full
+// amenity list is small enough to return in one call.
+export async function fetchHostawayAmenities(token: string): Promise<HostawayAmenity[]> {
+  const res = await fetch("https://api.hostaway.com/v1/amenities", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Hostaway amenities request failed: ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as { result?: HostawayAmenity[] };
+  return data.result ?? [];
+}
+
+// Best-effort wrapper for pages that need the amenity checklist to render
+// (Templates create/edit, New Listing) - returns an empty list rather
+// than throwing if Hostaway isn't configured or unreachable, so those
+// pages still load with an empty/explanatory checklist instead of a hard
+// 500.
+export async function getAmenitiesOrEmpty(): Promise<HostawayAmenity[]> {
+  try {
+    const credentials = await getHostawayCredentials();
+    if (!credentials) return [];
+    const token = await getAccessToken(credentials.accountId, credentials.apiKey);
+    return await fetchHostawayAmenities(token);
+  } catch {
+    return [];
+  }
+}
+
+export type CreateListingInput = {
+  name: string;
+  address: string;
+  city?: string | null;
+  state?: string | null;
+  zipcode?: string | null;
+  bedroomsNumber: number;
+  bathroomsNumber: number;
+  price: number;
+  currencyCode: string;
+  guestsIncluded: number;
+  priceForExtraPerson: number;
+  personCapacity?: number | null;
+  cancellationPolicy?: string | null;
+  // "HH:MM" strings (what an <input type="time"> gives you) - converted
+  // to the plain 0-23 integer hour Hostaway's API actually expects (e.g.
+  // "15:00" -> 15) inside createHostawayListing. Confirmed live
+  // (2026-09-15): passing "HH:MM" strings directly is silently ignored,
+  // not rejected - the listing still creates fine, just without these
+  // fields set, which is how this was first caught.
+  checkInTimeStart?: string | null;
+  checkInTimeEnd?: string | null;
+  checkOutTime?: string | null;
+  minNights?: number | null;
+  maxNights?: number | null;
+  instantBookable?: boolean;
+  cleaningFee?: number | null;
+  refundableDamageDeposit?: number | null;
+  houseRules?: string | null;
+  description?: string | null;
+  amenityIds: number[];
+};
+
+// POST /v1/listings - creates a listing that exists in Hostaway but is
+// NOT exported/published to any channel (export is a separate, explicit
+// dashboard action - see src/lib/licenses.ts's caveat about the same
+// distinction for updates). That's deliberate: the user adds photos and
+// publishes manually once the listing is ready.
+function hourFromTimeString(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const hour = parseInt(value.split(":")[0], 10);
+  return Number.isFinite(hour) && hour >= 0 && hour <= 23 ? hour : undefined;
+}
+
+export async function createHostawayListing(
+  token: string,
+  input: CreateListingInput
+): Promise<{ id: number }> {
+  const body: Record<string, unknown> = {
+    name: input.name,
+    externalListingName: input.name,
+    address: input.address,
+    city: input.city || undefined,
+    state: input.state || undefined,
+    zipcode: input.zipcode || undefined,
+    bedroomsNumber: input.bedroomsNumber,
+    bathroomsNumber: input.bathroomsNumber,
+    price: input.price,
+    currencyCode: input.currencyCode,
+    guestsIncluded: input.guestsIncluded,
+    priceForExtraPerson: input.priceForExtraPerson,
+    personCapacity: input.personCapacity ?? undefined,
+    cancellationPolicy: input.cancellationPolicy || undefined,
+    checkInTimeStart: hourFromTimeString(input.checkInTimeStart),
+    checkInTimeEnd: hourFromTimeString(input.checkInTimeEnd),
+    checkOutTime: hourFromTimeString(input.checkOutTime),
+    minNights: input.minNights ?? undefined,
+    maxNights: input.maxNights ?? undefined,
+    instantBookable: input.instantBookable ?? undefined,
+    cleaningFee: input.cleaningFee ?? undefined,
+    refundableDamageDeposit: input.refundableDamageDeposit ?? undefined,
+    houseRules: input.houseRules || undefined,
+    description: input.description || undefined,
+    listingAmenities: input.amenityIds.map((amenityId) => ({ amenityId })),
+  };
+
+  const res = await fetch(LISTINGS_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const responseBody = await res.text();
+    throw new Error(`Hostaway listing creation failed: ${res.status} ${responseBody.slice(0, 400)}`);
+  }
+
+  const data = (await res.json()) as { result: { id: number } };
+  return { id: data.result.id };
+}
+
 export type HostawaySyncResult = {
   created: number;
   updated: number;

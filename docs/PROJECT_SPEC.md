@@ -236,6 +236,44 @@ standalone `notes` row (`work_order_id` null, `category` = Restock
 Issue) and emails the service admin immediately — not batched like the
 work-order-completion notes email in 3.11.
 
+### 3.15 New Listing creation + templates
+Two admin-only pages (in `ALL_NAV_ITEMS` but not `ACCESS_SECTIONS`, same
+mechanism that keeps Settings out of access-link sessions — no separate
+guard needed): **Templates** (`/templates`, `/templates/[id]`) and **New
+Listing** (`/listings/new`).
+
+A `ListingTemplate` holds the defaults that are the same across most
+properties — pricing, cancellation policy, check-in/out times, min/max
+nights, instant-bookable, house rules, amenities, and a mail-merge
+description pattern (`{bedrooms}` `{bathrooms}` `{city}` `{state}`
+`{amenities}` placeholders, filled in client-side, no AI/external API).
+New Listing has the property-specific fields (address, bed/bath count,
+name) plus a template picker — selecting one pre-fills every
+template-driven field via refs (`NewListingForm.tsx`), all still
+editable, same pattern as `CleaningForm.tsx`.
+
+Submitting calls `createListingFromInput` (`src/lib/listings.ts`), which
+POSTs to Hostaway (`createHostawayListing` in `src/lib/hostaway.ts`) and
+immediately creates a matching `Property` row (`source: Hostaway`) —
+same shape `syncHostawayListings` creates for listings discovered via the
+regular sync, so it works everywhere else in the app right away. No
+"export"/"publish" call is ever made, so the listing exists in Hostaway
+as an unpublished draft until the user manually adds photos and
+publishes it there themselves.
+
+Two things confirmed against the live Hostaway account while building
+this (not guessed):
+- `GET /v1/amenities` works despite being undocumented, and returns the
+  exact `{id, name}` taxonomy `listingAmenities` expects.
+- `checkInTimeStart`/`checkInTimeEnd`/`checkOutTime` are plain 0–23 hour
+  integers, not "HH:MM" strings — passing a string is silently ignored
+  (the listing still creates, just without that field set) rather than
+  rejected. `hourFromTimeString()` in `src/lib/hostaway.ts` converts the
+  `<input type="time">` value before sending.
+
+Realtor.com/Zillow address lookups and true AI-generated descriptions
+were both considered and dropped — see section 8's roadmap note.
+
 ## 4. Data Model
 
 Field names below match the validated Excel prototype
@@ -455,22 +493,19 @@ above: item edit/deactivate/delete, Hostaway sync now also pulls
 address/bedrooms/bathrooms, master door code + general notes per property,
 the Team & work order system (section 3.8) — including a crew-facing
 work order page, which is a lighter-weight stand-in for the full Field-role
-mobile view originally planned as Phase 2 — and short-term rental license
-tracking with expiration alerts (section 3.13).
-
-Proposed, not yet built: a property onboarding page — enter address,
-bed/bath count, and standard amenities, and the app calls Hostaway's
-listing-creation API (`POST /v1/listings`) to create the listing, using
-sensible defaults for the boilerplate fields Hostaway requires (price,
-currency, guest counts, cancellation policy) so the user only has to add
-photos afterward. Deliberately scoped to skip Google Drive integration —
-Hostaway's image API needs stable public URLs, which Drive links don't
-reliably provide, and pulling photos from Drive would need a real OAuth
-flow (consent screen, token storage/refresh, folder picker) on top of
-re-hosting each photo through our own Supabase storage before handing
-Hostaway a URL. This creates a *draft* listing only — going live on
-channels (photos, description polish, channel connections) still happens
-in Hostaway's own editor.
+mobile view originally planned as Phase 2 — short-term rental license
+tracking with expiration alerts (section 3.13) — and the New Listing +
+Templates pages (section 3.15): enter address/bed-bath/amenities, apply a
+reusable template, and the app calls Hostaway's listing-creation API to
+create a *draft* listing (no photos, not published) plus a matching
+Property row. Two things scoped out when this was built: Google Drive
+photo integration (Hostaway's image API needs stable public URLs, which
+Drive links don't reliably provide, and pulling photos from Drive would
+need a real OAuth flow on top of re-hosting through Supabase storage) and
+true AI-generated descriptions (would need a new API key integration) —
+replaced with a free client-side mail-merge template instead. Going live
+on channels (photos, description polish, channel connections) still
+happens in Hostaway's own editor.
 
 ## 9. Open Decisions (ask the user, don't assume)
 
