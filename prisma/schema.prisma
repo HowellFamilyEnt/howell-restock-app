@@ -59,6 +59,13 @@ model Property {
   restock_frequency_days   Int
   urgent_restock_requested Boolean        @default(false)
   active                   Boolean        @default(true)
+  // Raw airbnbExportStatus from Hostaway's listing (e.g. "exported" =
+  // live/bookable on Airbnb right now) - captured for free during the
+  // regular Hostaway sync (the bulk GET /v1/listings response already
+  // includes it, confirmed live 2026-09-15, no extra API calls needed).
+  // Null until the first sync after this field existed. Separate from
+  // `active`, which is this app's own archive flag, not Hostaway's.
+  airbnb_status            String?
   hostaway_listing_id      String?        @unique
   source                   PropertySource @default(Manual)
   assignedTeamMemberId     String?

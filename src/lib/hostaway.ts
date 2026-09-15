@@ -26,6 +26,7 @@ type HostawayListing = {
   zipcode?: string | null;
   bedroomsNumber?: number | null;
   bathroomsNumber?: number | null;
+  airbnbExportStatus?: string | null;
 };
 
 type MappedListing = {
@@ -35,6 +36,7 @@ type MappedListing = {
   address: string | null;
   bedrooms: number | null;
   bathrooms: number | null;
+  airbnbStatus: string | null;
 };
 
 export async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
@@ -156,6 +158,7 @@ function mapListing(listing: HostawayListing): MappedListing {
     address: address || null,
     bedrooms: typeof listing.bedroomsNumber === "number" ? listing.bedroomsNumber : null,
     bathrooms: typeof listing.bathroomsNumber === "number" ? listing.bathroomsNumber : null,
+    airbnbStatus: listing.airbnbExportStatus ?? null,
   };
 }
 
@@ -385,6 +388,7 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           address: mapped.address,
           bedrooms: mapped.bedrooms,
           bathrooms: mapped.bathrooms,
+          airbnb_status: mapped.airbnbStatus,
         },
       });
       updated += 1;
@@ -395,6 +399,7 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           address: mapped.address,
           bedrooms: mapped.bedrooms,
           bathrooms: mapped.bathrooms,
+          airbnb_status: mapped.airbnbStatus,
           type: "STR",
           unit_count: mapped.unitCount,
           assigned_cleaning_team: null,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createProperty, togglePropertyActive, updateArea } from "./actions";
 import HostawaySyncButton from "./HostawaySyncButton";
 import CreatableGroupSelect from "@/components/CreatableGroupSelect";
+import PropertyStatusBadge from "./PropertyStatusBadge";
 
 const AREA_UNASSIGNED = "No area set";
 
@@ -117,11 +118,13 @@ export default async function PropertiesPage({
                       </td>
                       <td className="px-4 py-2 text-gray-600">{property.assigned_cleaning_team ?? "—"}</td>
                       <td className="px-4 py-2">
-                        <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
-                          <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
-                            {property.active ? "Archive" : "Restore"}
-                          </button>
-                        </form>
+                        <PropertyStatusBadge
+                          propertyName={property.name_address}
+                          isHostaway={property.source === "Hostaway"}
+                          airbnbStatus={property.airbnb_status}
+                          isActive={property.active}
+                          toggleActiveAction={togglePropertyActive.bind(null, property.id, !property.active)}
+                        />
                       </td>
                       <td className="px-4 py-2 text-right">
                         <Link
@@ -143,9 +146,18 @@ export default async function PropertiesPage({
                   key={property.id}
                   className={`rounded-lg border border-gray-200 bg-white p-4 ${property.active ? "" : "opacity-50"}`}
                 >
-                  <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 hover:underline">
-                    {property.name_address}
-                  </Link>
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/properties/${property.id}`} className="font-medium text-gray-900 hover:underline">
+                      {property.name_address}
+                    </Link>
+                    <PropertyStatusBadge
+                      propertyName={property.name_address}
+                      isHostaway={property.source === "Hostaway"}
+                      airbnbStatus={property.airbnb_status}
+                      isActive={property.active}
+                      toggleActiveAction={togglePropertyActive.bind(null, property.id, !property.active)}
+                    />
+                  </div>
                   {property.address && <p className="mt-1 text-sm text-gray-500">{property.address}</p>}
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span>
@@ -172,12 +184,7 @@ export default async function PropertiesPage({
                       Save
                     </button>
                   </form>
-                  <div className="mt-3 flex items-center justify-between">
-                    <form action={togglePropertyActive.bind(null, property.id, !property.active)}>
-                      <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
-                        {property.active ? "Archive" : "Restore"}
-                      </button>
-                    </form>
+                  <div className="mt-3 flex items-center justify-end">
                     <Link
                       href={`/properties/${property.id}`}
                       className="text-xs font-medium text-gray-600 hover:text-gray-900"
