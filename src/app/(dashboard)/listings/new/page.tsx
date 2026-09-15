@@ -38,6 +38,10 @@ export default async function NewListingPage() {
           Creates the listing in Hostaway as a draft — it won&apos;t be exported/published to Airbnb or
           any other channel until you add photos and publish it yourself in Hostaway.
         </p>
+        <p className="mt-1 text-sm text-gray-500">
+          Amenity sub-types (e.g. Air conditioning: Central vs. window unit) aren&apos;t available
+          through Hostaway&apos;s API — set those manually in Hostaway&apos;s editor along with photos.
+        </p>
       </div>
 
       <NewListingForm
