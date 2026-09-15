@@ -13,7 +13,7 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-8 shadow-sm"
       >
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Howell Restock</h1>
+          <h1 className="text-xl font-semibold text-gray-900">HFE App</h1>
           <p className="text-sm text-gray-500">Admin sign in</p>
         </div>
 

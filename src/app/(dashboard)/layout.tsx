@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { auth, signOut } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ACCESS_SECTIONS, ACCESS_COOKIE_NAME, sectionKeyForPath } from "@/lib/accessLinks";
-import MobileNav from "./MobileNav";
+import NavMenu from "./NavMenu";
 
 const ALL_NAV_ITEMS = [
   { href: "/properties", label: "Properties" },
@@ -55,7 +55,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-gray-50">
       <header className="relative border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <MobileNav
+          <NavMenu
             navItems={navItems}
             identityLabel={identityLabel}
             exitHref={exitHref}
