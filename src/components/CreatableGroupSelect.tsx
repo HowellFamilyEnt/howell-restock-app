@@ -36,7 +36,7 @@ export default function CreatableGroupSelect({
           defaultValue={defaultValue}
           placeholder={newPlaceholder}
           autoFocus
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          className="w-full min-w-[9rem] flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
         />
         {options.length > 0 && (
           <button
@@ -59,7 +59,7 @@ export default function CreatableGroupSelect({
       onChange={(e) => {
         if (e.target.value === NEW_VALUE) setIsNew(true);
       }}
-      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+      className="w-full min-w-[9rem] flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
     >
       <option value="">{noneLabel}</option>
       {options.map((option) => (
