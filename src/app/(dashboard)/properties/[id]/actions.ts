@@ -81,7 +81,6 @@ export async function updateAssignedTeamMember(propertyId: string, formData: For
 export async function updateLicenseInfo(propertyId: string, formData: FormData) {
   const license_owner = String(formData.get("license_owner") ?? "").trim();
   const license_number = String(formData.get("license_number") ?? "").trim();
-  const license_type = String(formData.get("license_type") ?? "").trim();
   const issueDateRaw = String(formData.get("license_issue_date") ?? "").trim();
   const expirationDateRaw = String(formData.get("license_expiration_date") ?? "").trim();
 
@@ -90,23 +89,32 @@ export async function updateLicenseInfo(propertyId: string, formData: FormData) 
 
   const current = await prisma.property.findUnique({
     where: { id: propertyId },
-    select: { license_expiration_date: true },
+    select: { license_expiration_date: true, license_number: true },
   });
   const expirationChanged =
     current?.license_expiration_date?.getTime() !== license_expiration_date?.getTime();
+  const numberChanged = (current?.license_number ?? null) !== (license_number || null);
 
   await prisma.property.update({
     where: { id: propertyId },
     data: {
       license_owner: license_owner || null,
       license_number: license_number || null,
-      license_type: license_type || null,
+      // license_type isn't on the Licenses page's grid form, only the
+      // property detail page's - only touch it when actually submitted,
+      // so saving from the grid never silently wipes it.
+      ...(formData.has("license_type")
+        ? { license_type: String(formData.get("license_type") ?? "").trim() || null }
+        : {}),
       license_issue_date,
       license_expiration_date,
       // Renewing the license (a new expiration date) should be able to
       // trigger a fresh alert as the new date approaches - see
       // src/lib/licenses.ts.
       ...(expirationChanged ? { license_alert_sent_for: null } : {}),
+      // A locally-edited number or expiration date is no longer verified
+      // against Hostaway until the next "Check against Hostaway" run.
+      ...(expirationChanged || numberChanged ? { license_hostaway_confirmed_at: null } : {}),
     },
   });
 

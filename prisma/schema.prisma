@@ -76,6 +76,13 @@ model Property {
   license_issue_date       DateTime?
   license_expiration_date  DateTime?
   license_alert_sent_for   DateTime?
+  // Stamped by syncLicensesToHostaway (src/lib/licenses.ts) whenever
+  // license_number/license_expiration_date are confirmed to match this
+  // property's Hostaway listing - either they already matched, or the
+  // sync just pushed ours to make them match. Cleared back to null by
+  // updateLicenseInfo whenever either of those fields is edited locally,
+  // so a stale "confirmed" can never survive an unsynced change.
+  license_hostaway_confirmed_at DateTime?
 
   parLevels          ParLevel[]
   restockEvents      RestockEvent[]

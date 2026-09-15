@@ -33,13 +33,32 @@ type Row = {
   name: string;
   owner: string | null;
   number: string | null;
-  type: string | null;
   issueDate: string | null;
   expirationDate: string | null;
   status: LicenseStatus;
+  hasHostawayListing: boolean;
+  confirmed: boolean;
 };
 
 const UNASSIGNED_GROUP = "No owner set";
+
+function ConfirmedBadge({ row }: { row: Row }) {
+  if (!row.hasHostawayListing) {
+    return <span className="w-fit text-xs text-gray-400">—</span>;
+  }
+  if (row.confirmed) {
+    return (
+      <span className="w-fit rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+        Yes
+      </span>
+    );
+  }
+  return (
+    <span className="w-fit rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+      Not yet
+    </span>
+  );
+}
 
 export default async function LicensesPage({
   searchParams,
@@ -58,10 +77,11 @@ export default async function LicensesPage({
     name: p.name_address,
     owner: p.license_owner,
     number: p.license_number,
-    type: p.license_type,
     issueDate: p.license_issue_date ? p.license_issue_date.toISOString().slice(0, 10) : null,
     expirationDate: p.license_expiration_date ? p.license_expiration_date.toISOString().slice(0, 10) : null,
     status: computeLicenseStatus(p.license_expiration_date),
+    hasHostawayListing: !!p.hostaway_listing_id,
+    confirmed: !!p.license_hostaway_confirmed_at,
   }));
 
   const counts = {
@@ -148,7 +168,7 @@ export default async function LicensesPage({
                   <span>Property</span>
                   <span>Owner</span>
                   <span>License #</span>
-                  <span>Type</span>
+                  <span>Confirmed</span>
                   <span>Issue date</span>
                   <span>Expiration date</span>
                   <span>Status</span>
@@ -170,11 +190,7 @@ export default async function LicensesPage({
                         defaultValue={row.number ?? ""}
                         className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
                       />
-                      <input
-                        name="license_type"
-                        defaultValue={row.type ?? ""}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
-                      />
+                      <ConfirmedBadge row={row} />
                       <input
                         name="license_issue_date"
                         type="date"
@@ -233,13 +249,9 @@ export default async function LicensesPage({
                       className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700">Type</label>
-                    <input
-                      name="license_type"
-                      defaultValue={row.type ?? ""}
-                      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    />
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-gray-700">Confirmed in Hostaway:</label>
+                    <ConfirmedBadge row={row} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">

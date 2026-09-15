@@ -27,7 +27,11 @@ export async function runHostawayLicenseSyncAction(
     const result = await syncLicensesToHostaway();
     revalidatePath("/licenses");
 
-    const parts = [`Checked ${result.checked}`, `updated ${result.updated} in Hostaway`];
+    const parts = [
+      `Checked ${result.checked}`,
+      `updated ${result.updated} in Hostaway`,
+      `confirmed ${result.confirmed}`,
+    ];
     if (result.skippedNoHostawayListing > 0) {
       parts.push(`${result.skippedNoHostawayListing} skipped (not a Hostaway listing)`);
     }

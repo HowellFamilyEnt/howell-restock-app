@@ -86,6 +86,7 @@ export async function checkExpiringLicenses(): Promise<LicenseCheckResult> {
 export type HostawayLicenseSyncResult = {
   checked: number;
   updated: number;
+  confirmed: number;
   skippedNoHostawayListing: number;
   errors: string[];
 };
@@ -137,12 +138,19 @@ export async function syncLicensesToHostaway(): Promise<HostawayLicenseSyncResul
   const result: HostawayLicenseSyncResult = {
     checked: properties.length,
     updated: 0,
+    confirmed: 0,
     skippedNoHostawayListing: 0,
     errors: [],
   };
   if (properties.length === 0) return result;
 
   const token = await getAccessToken(credentials.accountId, credentials.apiKey);
+  // Collected and written in one batched updateMany after the loop below,
+  // rather than one prisma call per property - this loop can run for
+  // minutes (paced Hostaway requests), and a DB write on every iteration
+  // risks exhausting the connection pool if anything else hits the DB
+  // while it's running (confirmed live: this happened during testing).
+  const confirmedIds: string[] = [];
 
   for (const property of properties) {
     if (!property.hostaway_listing_id) {
@@ -180,11 +188,23 @@ export async function syncLicensesToHostaway(): Promise<HostawayLicenseSyncResul
         result.updated += 1;
         await sleep(REQUEST_SPACING_MS);
       }
+
+      // Either it already matched, or the push above just made it match -
+      // either way, number and expiration are now confirmed in sync.
+      confirmedIds.push(property.id);
     } catch (error) {
       result.errors.push(
         `${property.name_address}: ${error instanceof Error ? error.message : "Unknown error"}`
       );
     }
+  }
+
+  if (confirmedIds.length > 0) {
+    await prisma.property.updateMany({
+      where: { id: { in: confirmedIds } },
+      data: { license_hostaway_confirmed_at: new Date() },
+    });
+    result.confirmed = confirmedIds.length;
   }
 
   return result;
