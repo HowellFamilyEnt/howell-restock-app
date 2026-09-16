@@ -71,6 +71,30 @@ export async function getServiceAdminEmail(): Promise<string | null> {
   return settings?.service_admin_email ?? null;
 }
 
+export type HostawayWebhookCredentials = {
+  username: string;
+  password: string;
+};
+
+// Verifies the Basic Auth header Hostaway sends back on every webhook call
+// (see src/app/api/webhooks/hostaway/route.ts) - set to whatever
+// Login/Password was entered when the webhook was registered in Hostaway's
+// dashboard.
+export async function getHostawayWebhookCredentials(): Promise<HostawayWebhookCredentials | null> {
+  const envUsername = process.env.HOSTAWAY_WEBHOOK_USERNAME;
+  const envPassword = process.env.HOSTAWAY_WEBHOOK_PASSWORD;
+  if (envUsername && envPassword) {
+    return { username: envUsername, password: envPassword };
+  }
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  if (settings?.hostaway_webhook_username && settings?.hostaway_webhook_password) {
+    return { username: settings.hostaway_webhook_username, password: settings.hostaway_webhook_password };
+  }
+
+  return null;
+}
+
 export type SmsCredentials = {
   accountSid: string;
   authToken: string;

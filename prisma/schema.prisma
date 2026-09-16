@@ -96,12 +96,13 @@ model Property {
   // so a stale "confirmed" can never survive an unsynced change.
   license_hostaway_confirmed_at DateTime?
 
-  parLevels          ParLevel[]
-  restockEvents      RestockEvent[]
-  notes              Note[]
-  assignedUsers      User[]         @relation("AssignedProperties")
-  assignedTeamMember TeamMember?    @relation(fields: [assignedTeamMemberId], references: [id])
-  workOrders         WorkOrder[]
+  parLevels            ParLevel[]
+  restockEvents        RestockEvent[]
+  notes                Note[]
+  assignedUsers        User[]                @relation("AssignedProperties")
+  assignedTeamMember   TeamMember?           @relation(fields: [assignedTeamMemberId], references: [id])
+  workOrders           WorkOrder[]
+  bookingConfirmations BookingConfirmation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -290,6 +291,13 @@ model IntegrationSettings {
   id                        String   @id @default("hostaway")
   hostaway_account_id       String?
   hostaway_api_key          String?
+  // Basic Auth credentials Hostaway sends back on every webhook call,
+  // entered here to match whatever's configured when the webhook is
+  // registered in Hostaway's dashboard (Settings -> Integrations). Verified
+  // by src/app/api/webhooks/hostaway/route.ts - that endpoint fails closed
+  // (401) if these aren't set, unlike most other credentials here.
+  hostaway_webhook_username String?
+  hostaway_webhook_password String?
   resend_api_key            String?
   resend_from_email         String?
   twilio_account_sid        String?
@@ -336,6 +344,31 @@ model ListingTemplate {
   updatedAt DateTime @updatedAt
 
   @@map("listing_templates")
+}
+
+// Records a guest booking-confirmation email/text sent directly by this app
+// (src/lib/bookingConfirmation.ts), triggered by Hostaway's "reservation
+// created" webhook (src/app/api/webhooks/hostaway/route.ts). Reservations
+// aren't mirrored locally otherwise, so hostaway_reservation_id doubles as
+// both the idempotency key (guards Hostaway's webhook retries) and, via
+// email_sent/sms_sent/errors, the only record of whether a guest actually
+// got their info - worth keeping even after the reservation itself is long
+// in the past.
+model BookingConfirmation {
+  id                       String    @id @default(cuid())
+  hostaway_reservation_id  String    @unique
+  property_id              String?
+  property                 Property? @relation(fields: [property_id], references: [id])
+  guest_name               String?
+  guest_email              String?
+  guest_phone              String?
+  arrival_date             DateTime?
+  email_sent               Boolean   @default(false)
+  sms_sent                 Boolean   @default(false)
+  errors                   String?
+  createdAt                DateTime  @default(now())
+
+  @@map("booking_confirmations")
 }
 
 // A shareable, no-login URL (/access/[token]) that grants whichever

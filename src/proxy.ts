@@ -46,5 +46,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Every route under /api/ does its own auth (NextAuth's own handlers,
+  // check-licenses' CRON_SECRET bearer check, the Hostaway webhook's Basic
+  // Auth check) - excluding just api/auth left the other two redirected to
+  // /login for any caller without a browser session, which is every
+  // external caller they're meant to serve (Vercel Cron, Hostaway).
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

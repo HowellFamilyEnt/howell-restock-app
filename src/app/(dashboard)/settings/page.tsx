@@ -3,6 +3,8 @@ import CredentialForm from "./CredentialForm";
 import AccessLinksSection from "./AccessLinksSection";
 import { baseUrl } from "@/lib/workorders";
 
+const WEBHOOK_URL_PATH = "/api/webhooks/hostaway";
+
 function mask(value: string | null | undefined): string | null {
   if (!value) return null;
   const tail = value.slice(-4);
@@ -52,6 +54,37 @@ export default async function SettingsPage() {
               name: "hostaway_api_key",
               label: "Secret API Key",
               masked: mask(settings?.hostaway_api_key),
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Hostaway Webhook</h2>
+        <p className="mb-2 text-sm text-gray-500">
+          Sends guests a direct email + text within minutes of booking — bypassing Hostaway&apos;s own
+          message thread, where VRBO blocks links. In Hostaway: Settings → Integrations → Webhooks →
+          create one for the <span className="font-medium">reservation created</span> event, pointing at:
+        </p>
+        <p className="mb-4 rounded-md bg-gray-50 px-3 py-2 font-mono text-xs text-gray-700">
+          {baseUrl()}
+          {WEBHOOK_URL_PATH}
+        </p>
+        <p className="mb-4 text-sm text-gray-500">
+          Set a Login/Password when creating it in Hostaway, and enter the same pair below — this
+          endpoint rejects any request that doesn&apos;t send them back.
+        </p>
+        <CredentialForm
+          fields={[
+            {
+              name: "hostaway_webhook_username",
+              label: "Login",
+              masked: settings?.hostaway_webhook_username ?? null,
+            },
+            {
+              name: "hostaway_webhook_password",
+              label: "Password",
+              masked: mask(settings?.hostaway_webhook_password),
             },
           ]}
         />

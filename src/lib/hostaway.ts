@@ -101,7 +101,43 @@ export type HostawayReservation = {
   arrivalDate: string; // YYYY-MM-DD
   departureDate: string; // YYYY-MM-DD
   status?: string | null;
+  // Only populated by fetchReservationById below - the arrival-window
+  // fetch above doesn't need them and every extra field costs nothing to
+  // leave optional. checkInTime/checkOutTime are plain integer hours (same
+  // quirk as Hostaway listings' own check-in/out fields), confirmed live
+  // 2026-09-16 against a real reservation. guestEmail is frequently null
+  // for Airbnb bookings (Airbnb withholds it) - hostProxyEmail is Airbnb's
+  // own relay address and the fallback callers should use.
+  guestName?: string | null;
+  guestFirstName?: string | null;
+  phone?: string | null;
+  guestEmail?: string | null;
+  hostProxyEmail?: string | null;
+  checkInTime?: number | null;
+  checkOutTime?: number | null;
+  confirmationCode?: string | null;
 };
+
+// Fetches one reservation by id with every field Hostaway returns (guest
+// contact info, check-in/out times, etc.) - used by the booking-webhook
+// handler (src/lib/bookingConfirmation.ts) rather than trusting whatever
+// the webhook body itself contains, since Hostaway's webhook payload shape
+// isn't documented in detail.
+export async function fetchReservationById(token: string, id: number): Promise<HostawayReservation> {
+  const res = await fetch(`${RESERVATIONS_URL}/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Hostaway reservation ${id} request failed: ${res.status} ${res.statusText}`);
+  }
+
+  const data = (await res.json()) as { result?: HostawayReservation };
+  if (!data.result) {
+    throw new Error(`Hostaway reservation ${id} response had no result.`);
+  }
+  return data.result;
+}
 
 // Verified against a live account (2026-09-10): the `listingMapId` query
 // param is silently ignored (does NOT filter server-side - the account has

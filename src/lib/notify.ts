@@ -32,7 +32,7 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   return null;
 }
 
-async function sendSms(to: string, body: string): Promise<string | null> {
+export async function sendSms(to: string, body: string): Promise<string | null> {
   const credentials = await getSmsCredentials();
   if (!credentials) return "SMS not configured";
 
