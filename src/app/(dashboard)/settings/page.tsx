@@ -75,7 +75,7 @@ export default async function SettingsPage() {
           See (and test) what a guest sees for any property — placeholder dates, no real reservation
           needed. Never sends anything.
         </p>
-        <form action="/guest-preview" className="flex items-end gap-3">
+        <form action="/guest-preview" target="_blank" className="flex items-end gap-3">
           <div className="flex-1 space-y-1">
             <label className="text-sm font-medium text-gray-700">Property</label>
             <select
