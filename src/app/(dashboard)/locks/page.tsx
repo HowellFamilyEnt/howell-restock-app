@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import ResyncButton from "./ResyncButton";
-import { assignLock } from "./actions";
+import DeleteLockButton from "./DeleteLockButton";
+import { assignLock, toggleSeamLockActive } from "./actions";
 
 const BATTERY_STYLES: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
@@ -28,13 +30,38 @@ function OnlineBadge({ online }: { online: boolean }) {
   );
 }
 
+function MissingBadge({ missingSince }: { missingSince: Date | null }) {
+  if (!missingSince) return null;
+  return (
+    <span
+      className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
+      title={`Not seen in a resync since ${missingSince.toISOString().slice(0, 10)}`}
+    >
+      Missing from Seam
+    </span>
+  );
+}
+
 // Admin page for the Seam device list, cached locally in SeamLock
 // (src/lib/seamSync.ts) and refreshed on demand rather than on every
 // load - grouped by manufacturer, with wifi/battery status and property
 // assignment (still stored on Property.smart_lock_id) side by side.
-export default async function LocksPage() {
+// Resync never touches an existing assignment - it only ever
+// adds/updates SeamLock's own fields (manufacturer, name, wifi, battery),
+// so a saved property<->lock connection survives every resync untouched.
+export default async function LocksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show?: string }>;
+}) {
+  const { show } = await searchParams;
+  const showArchived = show === "all";
+
   const [locks, properties] = await Promise.all([
-    prisma.seamLock.findMany({ orderBy: [{ manufacturer: "asc" }, { display_name: "asc" }] }),
+    prisma.seamLock.findMany({
+      where: showArchived ? {} : { active: true },
+      orderBy: [{ manufacturer: "asc" }, { display_name: "asc" }],
+    }),
     prisma.property.findMany({
       where: { active: true },
       select: { id: true, name_address: true, smart_lock_id: true },
@@ -60,11 +87,19 @@ export default async function LocksPage() {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Locks</h1>
           <p className="text-sm text-gray-500">
-            {locks.length} synced from Seam
+            {locks.length} {showArchived ? "total" : "active"}
             {locks[0] ? ` · last resync ${locks[0].lastSyncedAt.toISOString().slice(0, 16).replace("T", " ")}` : ""}
           </p>
         </div>
-        <ResyncButton />
+        <div className="flex items-center gap-3">
+          <Link
+            href={showArchived ? "/locks" : "/locks?show=all"}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            {showArchived ? "Hide archived" : "Show archived"}
+          </Link>
+          <ResyncButton />
+        </div>
       </div>
 
       {locks.length === 0 && (
@@ -86,7 +121,7 @@ export default async function LocksPage() {
                 <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                   <tr>
                     <th className="px-4 py-2">Device</th>
-                    <th className="px-4 py-2">Wifi</th>
+                    <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2">Battery</th>
                     <th className="px-4 py-2">Assigned property</th>
                     <th className="px-4 py-2"></th>
@@ -96,15 +131,18 @@ export default async function LocksPage() {
                   {groupLocks.map((lock) => {
                     const assigned = propertyByDeviceId.get(lock.device_id);
                     return (
-                      <tr key={lock.id}>
+                      <tr key={lock.id} className={lock.active ? "" : "opacity-50"}>
                         <td className="px-4 py-2 font-medium text-gray-900">{lock.display_name}</td>
                         <td className="px-4 py-2">
-                          <OnlineBadge online={lock.online} />
+                          <div className="flex flex-wrap gap-1">
+                            <OnlineBadge online={lock.online} />
+                            <MissingBadge missingSince={lock.missing_since} />
+                          </div>
                         </td>
                         <td className="px-4 py-2">
                           <BatteryBadge level={lock.battery_level} status={lock.battery_status} />
                         </td>
-                        <td colSpan={2} className="px-4 py-2">
+                        <td className="px-4 py-2">
                           <form action={assignLock.bind(null, lock.device_id)} className="flex items-center gap-2">
                             <select
                               name="property_id"
@@ -126,6 +164,16 @@ export default async function LocksPage() {
                             </button>
                           </form>
                         </td>
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <form action={toggleSeamLockActive.bind(null, lock.device_id, !lock.active)}>
+                              <button type="submit" className="text-xs font-medium text-gray-600 hover:text-gray-900">
+                                {lock.active ? "Archive" : "Restore"}
+                              </button>
+                            </form>
+                            <DeleteLockButton id={lock.id} />
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -137,14 +185,18 @@ export default async function LocksPage() {
               {groupLocks.map((lock) => {
                 const assigned = propertyByDeviceId.get(lock.device_id);
                 return (
-                  <div key={lock.id} className="rounded-lg border border-gray-200 p-3">
+                  <div
+                    key={lock.id}
+                    className={`rounded-lg border border-gray-200 p-3 ${lock.active ? "" : "opacity-50"}`}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-medium text-gray-900">{lock.display_name}</span>
-                      <div className="flex shrink-0 gap-1">
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1">
                         <OnlineBadge online={lock.online} />
                         <BatteryBadge level={lock.battery_level} status={lock.battery_status} />
                       </div>
                     </div>
+                    <MissingBadge missingSince={lock.missing_since} />
                     <form action={assignLock.bind(null, lock.device_id)} className="mt-2 flex items-center gap-2">
                       <select
                         name="property_id"
@@ -165,6 +217,14 @@ export default async function LocksPage() {
                         Save
                       </button>
                     </form>
+                    <div className="mt-3 flex items-center justify-end gap-3">
+                      <form action={toggleSeamLockActive.bind(null, lock.device_id, !lock.active)}>
+                        <button type="submit" className="text-xs font-medium text-gray-600 hover:text-gray-900">
+                          {lock.active ? "Archive" : "Restore"}
+                        </button>
+                      </form>
+                      <DeleteLockButton id={lock.id} />
+                    </div>
                   </div>
                 );
               })}

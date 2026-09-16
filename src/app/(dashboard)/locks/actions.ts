@@ -28,8 +28,41 @@ export async function resyncSeamLocks(): Promise<string> {
   try {
     const result = await syncSeamLocks();
     revalidatePath("/locks");
-    return `Synced ${result.synced} device${result.synced === 1 ? "" : "s"} from Seam.`;
+    const missingNote = result.missing > 0 ? ` (${result.missing} missing from Seam)` : "";
+    return `Synced ${result.synced} device${result.synced === 1 ? "" : "s"} from Seam${missingNote}.`;
   } catch (error) {
     return error instanceof Error ? error.message : "Sync failed.";
   }
+}
+
+// Archive (hide-by-default, reversible) - same pattern as
+// togglePropertyActive. Assignment isn't touched either way; an archived
+// lock still shows on its assigned property's page until reassigned.
+export async function toggleSeamLockActive(deviceId: string, next: boolean) {
+  await prisma.seamLock.update({ where: { device_id: deviceId }, data: { active: next } });
+  revalidatePath("/locks");
+}
+
+// Guarded permanent delete, same shape as deleteProperty/deleteItem: only
+// blocks on a real dependency (a property currently assigned to this
+// lock) rather than any history, since a lock itself has none locally -
+// GuestAccessCode rows reference the property and Seam's own
+// access_code_id, not this row, so deleting it doesn't orphan anything
+// except a dangling assignment, which this guard prevents outright.
+export async function deleteSeamLock(
+  id: string,
+  _prevState: string | undefined,
+  _formData: FormData
+): Promise<string> {
+  const lock = await prisma.seamLock.findUnique({ where: { id } });
+  if (!lock) return "Not found.";
+
+  const assignedProperty = await prisma.property.findFirst({ where: { smart_lock_id: lock.device_id } });
+  if (assignedProperty) {
+    return `Assigned to ${assignedProperty.name_address} — unassign it first.`;
+  }
+
+  await prisma.seamLock.delete({ where: { id } });
+  revalidatePath("/locks");
+  return "";
 }

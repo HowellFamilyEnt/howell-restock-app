@@ -420,14 +420,26 @@ model BookingConfirmation {
 // 1:1 by assignLock in src/app/(dashboard)/locks/actions.ts, which clears
 // any other property pointing at the same device before setting a new one.
 model SeamLock {
-  id             String   @id @default(cuid())
-  device_id      String   @unique
+  id             String    @id @default(cuid())
+  device_id      String    @unique
   manufacturer   String?
   display_name   String
-  online         Boolean  @default(true)
+  online         Boolean   @default(true)
   battery_level  Float?
   battery_status String?
-  lastSyncedAt   DateTime @default(now())
+  // User's own archive flag (hide-by-default, reversible) - separate from
+  // `online`, which is Seam's live wifi status, and from `missing_since`
+  // below, which is automatic. Mirrors Property.active.
+  active         Boolean   @default(true)
+  // Stamped by syncSeamLocks (src/lib/seamSync.ts) the first time a
+  // resync no longer sees this device_id come back from Seam (renamed in
+  // Kwikset/August/etc. still updates display_name normally - only a
+  // real removal leaves it out of the response entirely). Cleared back to
+  // null if the device reappears in a later sync. The row itself is never
+  // auto-deleted, so an existing property assignment never silently
+  // vanishes - this is the visible flag instead.
+  missing_since  DateTime?
+  lastSyncedAt   DateTime  @default(now())
 
   @@map("seam_locks")
 }
