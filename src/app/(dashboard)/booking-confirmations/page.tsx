@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { baseUrl } from "@/lib/workorders";
+import CopyLinkButton from "@/components/CopyLinkButton";
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -43,33 +46,53 @@ export default async function BookingConfirmationsPage() {
               <th className="px-4 py-2">Email</th>
               <th className="px-4 py-2">SMS</th>
               <th className="px-4 py-2">Errors</th>
+              <th className="px-4 py-2">Guest link</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {confirmations.map((c) => (
-              <tr key={c.id}>
-                <td className="whitespace-nowrap px-4 py-2 text-gray-600">
-                  {c.createdAt.toISOString().slice(0, 16).replace("T", " ")}
-                </td>
-                <td className="px-4 py-2 font-medium text-gray-900">{c.guest_name ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{c.property?.name_address ?? "No matching property"}</td>
-                <td className="whitespace-nowrap px-4 py-2 text-gray-600">
-                  {c.arrival_date ? c.arrival_date.toISOString().slice(0, 10) : "—"}
-                </td>
-                <td className="px-4 py-2">
-                  <StatusBadge ok={c.email_sent} label={c.email_sent ? "Sent" : "Not sent"} />
-                </td>
-                <td className="px-4 py-2">
-                  <StatusBadge ok={c.sms_sent} label={c.sms_sent ? "Sent" : "Not sent"} />
-                </td>
-                <td className="max-w-[20rem] px-4 py-2 text-xs text-gray-500" title={c.errors ?? ""}>
-                  {c.errors ?? "—"}
-                </td>
-              </tr>
-            ))}
+            {confirmations.map((c) => {
+              const guestLink = c.share_token ? `${baseUrl()}/guest/${c.share_token}` : null;
+              return (
+                <tr key={c.id}>
+                  <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                    {c.createdAt.toISOString().slice(0, 16).replace("T", " ")}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">{c.guest_name ?? "—"}</td>
+                  <td className="px-4 py-2 text-gray-600">{c.property?.name_address ?? "No matching property"}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-gray-600">
+                    {c.arrival_date ? c.arrival_date.toISOString().slice(0, 10) : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    <StatusBadge ok={c.email_sent} label={c.email_sent ? "Sent" : "Not sent"} />
+                  </td>
+                  <td className="px-4 py-2">
+                    <StatusBadge ok={c.sms_sent} label={c.sms_sent ? "Sent" : "Not sent"} />
+                  </td>
+                  <td className="max-w-[20rem] px-4 py-2 text-xs text-gray-500" title={c.errors ?? ""}>
+                    {c.errors ?? "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    {guestLink ? (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={guestLink}
+                          target="_blank"
+                          className="whitespace-nowrap text-xs font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          Open →
+                        </Link>
+                        <CopyLinkButton link={guestLink} />
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {confirmations.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                   Nothing yet — this fills in as new Hostaway bookings come in.
                 </td>
               </tr>
@@ -79,25 +102,40 @@ export default async function BookingConfirmationsPage() {
       </div>
 
       <div className="space-y-3 md:hidden">
-        {confirmations.map((c) => (
-          <div key={c.id} className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-2">
-              <span className="font-medium text-gray-900">{c.guest_name ?? "—"}</span>
-              <span className="shrink-0 text-xs text-gray-400">
-                {c.createdAt.toISOString().slice(0, 16).replace("T", " ")}
-              </span>
+        {confirmations.map((c) => {
+          const guestLink = c.share_token ? `${baseUrl()}/guest/${c.share_token}` : null;
+          return (
+            <div key={c.id} className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-2">
+                <span className="font-medium text-gray-900">{c.guest_name ?? "—"}</span>
+                <span className="shrink-0 text-xs text-gray-400">
+                  {c.createdAt.toISOString().slice(0, 16).replace("T", " ")}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">{c.property?.name_address ?? "No matching property"}</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Arrival: {c.arrival_date ? c.arrival_date.toISOString().slice(0, 10) : "—"}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <StatusBadge ok={c.email_sent} label={c.email_sent ? "Email sent" : "Email not sent"} />
+                <StatusBadge ok={c.sms_sent} label={c.sms_sent ? "SMS sent" : "SMS not sent"} />
+              </div>
+              {c.errors && <p className="mt-2 text-xs text-gray-500">{c.errors}</p>}
+              {guestLink && (
+                <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3">
+                  <Link
+                    href={guestLink}
+                    target="_blank"
+                    className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    Open guest page →
+                  </Link>
+                  <CopyLinkButton link={guestLink} />
+                </div>
+              )}
             </div>
-            <p className="mt-1 text-sm text-gray-500">{c.property?.name_address ?? "No matching property"}</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Arrival: {c.arrival_date ? c.arrival_date.toISOString().slice(0, 10) : "—"}
-            </p>
-            <div className="mt-2 flex gap-2">
-              <StatusBadge ok={c.email_sent} label={c.email_sent ? "Email sent" : "Email not sent"} />
-              <StatusBadge ok={c.sms_sent} label={c.sms_sent ? "SMS sent" : "SMS not sent"} />
-            </div>
-            {c.errors && <p className="mt-2 text-xs text-gray-500">{c.errors}</p>}
-          </div>
-        ))}
+          );
+        })}
         {confirmations.length === 0 && (
           <p className="rounded-lg border border-gray-200 bg-white px-4 py-6 text-center text-gray-400">
             Nothing yet — this fills in as new Hostaway bookings come in.

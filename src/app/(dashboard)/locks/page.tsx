@@ -132,7 +132,11 @@ export default async function LocksPage({
                     const assigned = propertyByDeviceId.get(lock.device_id);
                     return (
                       <tr key={lock.id} className={lock.active ? "" : "opacity-50"}>
-                        <td className="px-4 py-2 font-medium text-gray-900">{lock.display_name}</td>
+                        <td className="px-4 py-2 font-medium text-gray-900">
+                          <Link href={`/locks/${lock.device_id}`} target="_blank" className="hover:underline">
+                            {lock.display_name}
+                          </Link>
+                        </td>
                         <td className="px-4 py-2">
                           <div className="flex flex-wrap gap-1">
                             <OnlineBadge online={lock.online} />
@@ -190,7 +194,13 @@ export default async function LocksPage({
                     className={`rounded-lg border border-gray-200 p-3 ${lock.active ? "" : "opacity-50"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="font-medium text-gray-900">{lock.display_name}</span>
+                      <Link
+                        href={`/locks/${lock.device_id}`}
+                        target="_blank"
+                        className="font-medium text-gray-900 hover:underline"
+                      >
+                        {lock.display_name}
+                      </Link>
                       <div className="flex shrink-0 flex-wrap justify-end gap-1">
                         <OnlineBadge online={lock.online} />
                         <BatteryBadge level={lock.battery_level} status={lock.battery_status} />

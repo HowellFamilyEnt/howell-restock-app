@@ -64,6 +64,12 @@ export type SeamAccessCode = {
   code: string | null;
   status: string;
   display_status?: string;
+  name?: string | null;
+  type?: string; // "ongoing" | "time_bound"
+  created_at?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_managed?: boolean;
 };
 
 export async function createSeamAccessCode(
@@ -86,6 +92,28 @@ export async function createSeamAccessCode(
     ...(input.useBackupPool ? { use_backup_access_code_pool: true } : {}),
   });
   return data.access_code;
+}
+
+// Every code Seam itself created/manages on this device (guest and
+// vendor codes issued through this app). Confirmed live 2026-09-16 -
+// returns `{access_codes: [...]}`, same envelope as /locks/list.
+export async function listSeamAccessCodes(apiKey: string, deviceId: string): Promise<SeamAccessCode[]> {
+  const data = await seamRequest<{ access_codes: SeamAccessCode[] }>(apiKey, "/access_codes/list", {
+    device_id: deviceId,
+  });
+  return data.access_codes ?? [];
+}
+
+// Codes set directly on the lock outside of Seam (the manufacturer's own
+// app, or punched in on the keypad) - is_managed: false on every result.
+// Confirmed live 2026-09-16 against a real lock: this is where
+// pre-existing/manually-added codes (e.g. a maintenance code) actually
+// show up - they never appear in listSeamAccessCodes above.
+export async function listUnmanagedSeamAccessCodes(apiKey: string, deviceId: string): Promise<SeamAccessCode[]> {
+  const data = await seamRequest<{ access_codes: SeamAccessCode[] }>(apiKey, "/access_codes/unmanaged/list", {
+    device_id: deviceId,
+  });
+  return data.access_codes ?? [];
 }
 
 export async function pullSeamBackupAccessCode(apiKey: string, accessCodeId: string): Promise<SeamAccessCode> {

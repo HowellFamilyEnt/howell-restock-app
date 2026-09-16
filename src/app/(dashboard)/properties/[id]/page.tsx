@@ -192,20 +192,21 @@ export default async function PropertyDetailPage({
           <div>
             <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest automation</h2>
             <p className="text-sm text-gray-500">
-              Direct booking confirmations and smart-access codes for this property — also gated by the
-              master switch on the Settings page.
+              Direct booking confirmations and smart-access codes for this property. Click the button to
+              turn it on or off here — still also gated by the master switch on the Settings page, so
+              this property stays silent whenever that one is off, regardless of this setting.
             </p>
           </div>
           <form action={toggleGuestAutomationForProperty.bind(null, property.id, !property.guest_automation_enabled)}>
             <button
               type="submit"
-              className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium ${
+              className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ${
                 property.guest_automation_enabled
-                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  ? "bg-amber-600 text-white hover:bg-amber-700"
+                  : "bg-gray-900 text-white hover:bg-gray-700"
               }`}
             >
-              {property.guest_automation_enabled ? "On for this property" : "Off for this property"}
+              {property.guest_automation_enabled ? "On — turn off" : "Off — turn on"}
             </button>
           </form>
         </div>
