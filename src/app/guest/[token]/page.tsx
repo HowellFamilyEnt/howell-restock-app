@@ -31,9 +31,12 @@ export default async function GuestPortalPage({
   if (!confirmation || !confirmation.property) notFound();
   const property = confirmation.property;
 
-  const guestAccessCode = await prisma.guestAccessCode.findUnique({
-    where: { hostaway_reservation_id: confirmation.hostaway_reservation_id },
-  });
+  const [guestAccessCode, checkinPhotos] = await Promise.all([
+    prisma.guestAccessCode.findUnique({
+      where: { hostaway_reservation_id: confirmation.hostaway_reservation_id },
+    }),
+    prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+  ]);
 
   const arrivalDateStr = confirmation.arrival_date?.toISOString().slice(0, 10);
   const departureDateStr = confirmation.departure_date?.toISOString().slice(0, 10);
@@ -88,9 +91,31 @@ export default async function GuestPortalPage({
           )}
         </Section>
 
-        {property.guest_checkin_instructions && (
+        {(property.guest_checkin_instructions || checkinPhotos.length > 0) && (
           <Section title="Building & unit access">
-            <p className="whitespace-pre-wrap text-sm text-gray-700">{property.guest_checkin_instructions}</p>
+            {property.guest_checkin_instructions && (
+              <p className="whitespace-pre-wrap text-sm text-gray-700">{property.guest_checkin_instructions}</p>
+            )}
+            {checkinPhotos.length > 0 && (
+              <ol className={`space-y-4 ${property.guest_checkin_instructions ? "mt-4" : ""}`}>
+                {checkinPhotos.map((photo, index) => (
+                  <li key={photo.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-medium text-white">
+                      {index + 1}
+                    </span>
+                    <div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.url}
+                        alt={photo.caption ?? `Step ${index + 1}`}
+                        className="max-w-xs rounded-lg border border-gray-200"
+                      />
+                      {photo.caption && <p className="mt-1 text-sm text-gray-700">{photo.caption}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </Section>
         )}
 

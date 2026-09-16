@@ -145,6 +145,7 @@ model Property {
   workOrders           WorkOrder[]
   bookingConfirmations BookingConfirmation[]
   guestAccessCodes     GuestAccessCode[]
+  checkinPhotos        CheckinPhoto[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -493,6 +494,24 @@ model GuestAccessCode {
   createdAt               DateTime  @default(now())
 
   @@map("guest_access_codes")
+}
+
+// One captioned step in the guest portal's "Building & unit access"
+// walkthrough (src/app/guest/[token]/page.tsx) - e.g. a photo of the
+// building entrance with "Enter through the north door." `order` is a
+// plain integer, resequenced by swapping adjacent values when a step
+// moves up/down (src/app/(dashboard)/properties/[id]/actions.ts) rather
+// than reindexing the whole list.
+model CheckinPhoto {
+  id          String   @id @default(cuid())
+  property_id String
+  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  url         String
+  caption     String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@map("checkin_photos")
 }
 
 // A shareable, no-login URL (/access/[token]) that grants whichever

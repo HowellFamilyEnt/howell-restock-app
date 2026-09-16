@@ -8,6 +8,7 @@ import { createWorkOrderForProperty } from "@/lib/workorders";
 import { getSeamApiKey } from "@/lib/settings";
 import { createSeamAccessCode } from "@/lib/seam";
 import { zonedTimeToUtc } from "@/lib/calendar";
+import { uploadNotePhoto } from "@/lib/storage";
 
 // Refuses to hard-delete a property that has real history (restock
 // events, notes, work orders) - only par levels (just config, not
@@ -113,6 +114,75 @@ export async function updateGuestPortalInfo(propertyId: string, formData: FormDa
       house_rules: house_rules || null,
     },
   });
+
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+// Captioned check-in-instruction photos shown as a numbered sequence on
+// the guest portal, under Building & unit access. Reuses uploadNotePhoto
+// (src/lib/storage.ts) - it's generic despite the name, already the
+// shared upload path for work-order/cleaning note photos.
+export async function addCheckinPhoto(
+  propertyId: string,
+  _prevState: string | undefined,
+  formData: FormData
+): Promise<string> {
+  const caption = String(formData.get("caption") ?? "").trim();
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return "Choose a photo first.";
+
+  try {
+    const uploaded = await uploadNotePhoto(file);
+    const highest = await prisma.checkinPhoto.aggregate({
+      where: { property_id: propertyId },
+      _max: { order: true },
+    });
+    await prisma.checkinPhoto.create({
+      data: {
+        property_id: propertyId,
+        url: uploaded.url,
+        caption: caption || null,
+        order: (highest._max.order ?? -1) + 1,
+      },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Upload failed.";
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  return "";
+}
+
+export async function updateCheckinPhotoCaption(photoId: string, propertyId: string, formData: FormData) {
+  const caption = String(formData.get("caption") ?? "").trim();
+  await prisma.checkinPhoto.update({ where: { id: photoId }, data: { caption: caption || null } });
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function deleteCheckinPhoto(photoId: string, propertyId: string) {
+  await prisma.checkinPhoto.delete({ where: { id: photoId } });
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+// Resequences by swapping the moved step's `order` with its neighbor's,
+// rather than reindexing the whole list.
+export async function moveCheckinPhoto(photoId: string, propertyId: string, direction: "up" | "down") {
+  const photos = await prisma.checkinPhoto.findMany({
+    where: { property_id: propertyId },
+    orderBy: { order: "asc" },
+  });
+  const index = photos.findIndex((p) => p.id === photoId);
+  if (index === -1) return;
+
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= photos.length) return;
+
+  const current = photos[index];
+  const swapWith = photos[swapIndex];
+  await prisma.$transaction([
+    prisma.checkinPhoto.update({ where: { id: current.id }, data: { order: swapWith.order } }),
+    prisma.checkinPhoto.update({ where: { id: swapWith.id }, data: { order: current.order } }),
+  ]);
 
   revalidatePath(`/properties/${propertyId}`);
 }

@@ -7,6 +7,10 @@ import {
   updateMasterDoorCode,
   updateGeneralNotes,
   updateGuestPortalInfo,
+  addCheckinPhoto,
+  updateCheckinPhotoCaption,
+  deleteCheckinPhoto,
+  moveCheckinPhoto,
   updateAssignedTeamMember,
   updateLicenseInfo,
   toggleGuestAutomationForProperty,
@@ -18,6 +22,7 @@ import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
 import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
+import CheckinPhotoForm from "./CheckinPhotoForm";
 
 const licenseStatusStyles: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
@@ -47,7 +52,7 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const [items, teamMembers, workOrders] = await Promise.all([
+  const [items, teamMembers, workOrders, checkinPhotos] = await Promise.all([
     prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.workOrder.findMany({
@@ -56,6 +61,7 @@ export default async function PropertyDetailPage({
       take: 5,
       include: { assignedTeamMember: true },
     }),
+    prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
   ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
@@ -286,6 +292,76 @@ export default async function PropertyDetailPage({
             </button>
           </div>
         </form>
+
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <h3 className="mb-1 text-sm font-medium text-gray-700">Check-in photo steps</h3>
+          <p className="mb-3 text-sm text-gray-500">
+            A numbered, captioned walkthrough shown under Building &amp; unit access on the guest portal —
+            e.g. a photo of the entrance with &ldquo;Enter through the north door.&rdquo;
+          </p>
+
+          {checkinPhotos.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {checkinPhotos.map((photo, index) => (
+                <div key={photo.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-2">
+                  <span className="w-5 shrink-0 text-center text-sm font-medium text-gray-400">{index + 1}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.caption ?? `Step ${index + 1}`}
+                    className="h-14 w-14 shrink-0 rounded-md border border-gray-200 object-cover"
+                  />
+                  <form
+                    action={updateCheckinPhotoCaption.bind(null, photo.id, property.id)}
+                    className="flex flex-1 items-center gap-2"
+                  >
+                    <input
+                      name="caption"
+                      defaultValue={photo.caption ?? ""}
+                      placeholder="Caption"
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                    >
+                      Save
+                    </button>
+                  </form>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <form action={moveCheckinPhoto.bind(null, photo.id, property.id, "up")}>
+                      <button
+                        type="submit"
+                        disabled={index === 0}
+                        className="rounded-md px-1.5 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Move up"
+                      >
+                        ↑
+                      </button>
+                    </form>
+                    <form action={moveCheckinPhoto.bind(null, photo.id, property.id, "down")}>
+                      <button
+                        type="submit"
+                        disabled={index === checkinPhotos.length - 1}
+                        className="rounded-md px-1.5 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Move down"
+                      >
+                        ↓
+                      </button>
+                    </form>
+                    <form action={deleteCheckinPhoto.bind(null, photo.id, property.id)}>
+                      <button type="submit" className="rounded-md px-1.5 py-1 text-xs text-red-600 hover:bg-red-50">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <CheckinPhotoForm action={addCheckinPhoto.bind(null, property.id)} />
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
