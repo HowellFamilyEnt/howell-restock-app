@@ -20,13 +20,13 @@ export default function OwnerField({
 
   if (isNew) {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1">
         <input
           name="license_owner"
           defaultValue={defaultValue}
           placeholder="New owner name"
           autoFocus
-          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          className="min-w-0 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
         />
         {owners.length > 0 && (
           <button
@@ -49,7 +49,7 @@ export default function OwnerField({
       onChange={(e) => {
         if (e.target.value === NEW_OWNER_VALUE) setIsNew(true);
       }}
-      className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+      className="min-w-0 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
     >
       <option value="">No owner</option>
       {owners.map((owner) => (

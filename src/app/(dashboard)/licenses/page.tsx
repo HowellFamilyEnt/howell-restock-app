@@ -164,7 +164,7 @@ export default async function LicensesPage({
 
             <div className="hidden overflow-x-auto md:block">
               <div className="min-w-[900px]">
-                <div className="grid grid-cols-[1.4fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_auto] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-left text-xs uppercase text-gray-500">
+                <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_auto] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-left text-xs uppercase text-gray-500">
                   <span>Property</span>
                   <span>Owner</span>
                   <span>License #</span>
@@ -179,29 +179,29 @@ export default async function LicensesPage({
                     <form
                       key={row.id}
                       action={updateLicenseInfo.bind(null, row.id)}
-                      className="grid grid-cols-[1.4fr_1fr_0.9fr_0.9fr_0.8fr_0.8fr_0.9fr_auto] items-center gap-2 px-4 py-2"
+                      className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_auto] items-center gap-2 px-4 py-2"
                     >
-                      <Link href={`/properties/${row.id}`} className="truncate text-sm font-medium text-gray-900 hover:underline">
+                      <Link href={`/properties/${row.id}`} className="min-w-0 truncate text-sm font-medium text-gray-900 hover:underline">
                         {row.name}
                       </Link>
                       <OwnerField owners={allOwners} defaultValue={row.owner ?? ""} />
                       <input
                         name="license_number"
                         defaultValue={row.number ?? ""}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        className="min-w-0 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
                       />
                       <ConfirmedBadge row={row} />
                       <input
                         name="license_issue_date"
                         type="date"
                         defaultValue={row.issueDate ?? ""}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        className="min-w-0 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
                       />
                       <input
                         name="license_expiration_date"
                         type="date"
                         defaultValue={row.expirationDate ?? ""}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        className="min-w-0 w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
                       />
                       <span
                         className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${statusStyles[row.status]}`}
