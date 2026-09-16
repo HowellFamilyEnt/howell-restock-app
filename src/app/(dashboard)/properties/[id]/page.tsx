@@ -8,7 +8,6 @@ import {
   updateGeneralNotes,
   updateAssignedTeamMember,
   updateLicenseInfo,
-  updateSmartLock,
   toggleGuestAutomationForProperty,
   issueVendorAccessCode,
   createWorkOrderAction,
@@ -16,8 +15,6 @@ import {
 import { togglePropertyActive } from "../actions";
 import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
-import { getSeamApiKey } from "@/lib/settings";
-import { listSeamLocks } from "@/lib/seam";
 import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
 
@@ -63,8 +60,9 @@ export default async function PropertyDetailPage({
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
   const licenseStatus = computeLicenseStatus(property.license_expiration_date);
 
-  const seamApiKey = await getSeamApiKey();
-  const seamLocks = seamApiKey ? await listSeamLocks(seamApiKey).catch(() => []) : [];
+  const assignedLock = property.smart_lock_id
+    ? await prisma.seamLock.findUnique({ where: { device_id: property.smart_lock_id } })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -187,38 +185,22 @@ export default async function PropertyDetailPage({
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="mb-1 text-sm font-semibold text-gray-900">Smart lock</h2>
-        <p className="mb-4 text-sm text-gray-500">
-          Pilot Seam-backed door codes on this property. Not connected means guests keep using the
-          master door code above.
-        </p>
-        {!seamApiKey ? (
-          <p className="text-sm text-gray-400">Add a Seam API key on the Settings page first.</p>
-        ) : (
-          <form action={updateSmartLock.bind(null, property.id)} className="flex items-end gap-3">
-            <div className="flex-1 space-y-1">
-              <label className="text-sm font-medium text-gray-700">Device</label>
-              <select
-                name="smart_lock_id"
-                defaultValue={property.smart_lock_id ?? ""}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">Not connected</option>
-                {seamLocks.map((lock) => (
-                  <option key={lock.device_id} value={lock.device_id}>
-                    {lock.display_name} {lock.properties?.online === false ? "(offline)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Save
-            </button>
-          </form>
-        )}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-gray-900">Smart lock</h2>
+            <p className="text-sm text-gray-500">
+              {assignedLock
+                ? `Connected: ${assignedLock.display_name}`
+                : "Not connected — guests keep using the master door code above."}
+            </p>
+          </div>
+          <Link
+            href="/locks"
+            className="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Manage on Locks page →
+          </Link>
+        </div>
       </div>
 
       {property.smart_lock_id && (

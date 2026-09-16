@@ -27,15 +27,36 @@ async function seamRequest<T>(apiKey: string, path: string, body: Record<string,
   return (await res.json()) as T;
 }
 
-export type SeamLock = {
+// Named SeamDevice (not SeamLock) to avoid colliding with the Prisma
+// SeamLock model (src/lib/seamSync.ts), which caches this shape locally so
+// the /locks admin page can show it without hitting Seam on every load.
+export type SeamDevice = {
   device_id: string;
   display_name: string;
-  properties?: { online?: boolean };
+  connected_account_id?: string;
+  properties?: {
+    online?: boolean;
+    battery?: { level?: number; status?: string };
+  };
 };
 
-export async function listSeamLocks(apiKey: string): Promise<SeamLock[]> {
-  const data = await seamRequest<{ locks: SeamLock[] }>(apiKey, "/locks/list");
+export async function listSeamLocks(apiKey: string): Promise<SeamDevice[]> {
+  const data = await seamRequest<{ locks: SeamDevice[] }>(apiKey, "/locks/list");
   return data.locks ?? [];
+}
+
+export type SeamConnectedAccount = {
+  connected_account_id: string;
+  account_type: string; // e.g. "schlage", "august" - confirmed live 2026-09-16
+  account_type_display_name: string; // e.g. "Schlage", "August"
+};
+
+export async function listSeamConnectedAccounts(apiKey: string): Promise<SeamConnectedAccount[]> {
+  const data = await seamRequest<{ connected_accounts: SeamConnectedAccount[] }>(
+    apiKey,
+    "/connected_accounts/list"
+  );
+  return data.connected_accounts ?? [];
 }
 
 export type SeamAccessCode = {

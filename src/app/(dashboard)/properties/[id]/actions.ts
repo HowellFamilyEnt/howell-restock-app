@@ -153,17 +153,6 @@ export async function updateLicenseInfo(propertyId: string, formData: FormData) 
   revalidatePath(`/properties/${propertyId}`);
 }
 
-export async function updateSmartLock(propertyId: string, formData: FormData) {
-  const smart_lock_id = String(formData.get("smart_lock_id") ?? "").trim();
-
-  await prisma.property.update({
-    where: { id: propertyId },
-    data: { smart_lock_id: smart_lock_id || null },
-  });
-
-  revalidatePath(`/properties/${propertyId}`);
-}
-
 // Bound-toggle, same pattern as togglePropertyActive in ../actions.ts -
 // per-property half of the guest-automation kill switch (the other half
 // is IntegrationSettings.guest_automation_enabled on the Settings page).

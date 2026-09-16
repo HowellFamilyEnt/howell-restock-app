@@ -410,6 +410,28 @@ model BookingConfirmation {
   @@map("booking_confirmations")
 }
 
+// Local cache of Seam's device list (src/lib/seamSync.ts's syncSeamLocks),
+// grouped by manufacturer on the /locks admin page - refreshed on demand
+// via that page's "Resync" button rather than on every page load, so
+// property assignment (below) has something stable to point at and the
+// page doesn't need to hit Seam's API just to render. Property assignment
+// itself still lives on Property.smart_lock_id (the source of truth
+// provisionGuestAccessCode/issueVendorAccessCode already read) - kept
+// 1:1 by assignLock in src/app/(dashboard)/locks/actions.ts, which clears
+// any other property pointing at the same device before setting a new one.
+model SeamLock {
+  id             String   @id @default(cuid())
+  device_id      String   @unique
+  manufacturer   String?
+  display_name   String
+  online         Boolean  @default(true)
+  battery_level  Float?
+  battery_status String?
+  lastSyncedAt   DateTime @default(now())
+
+  @@map("seam_locks")
+}
+
 // A Seam-issued door code for one reservation ("guest") or a one-off
 // vendor visit like HVAC ("vendor"). Plays the same idempotency-log role
 // BookingConfirmation plays for P1: hostaway_reservation_id doubles as
