@@ -52,7 +52,19 @@ model Property {
   bedrooms                 Int?
   bathrooms                Float?
   master_door_code         String?
+  // Internal-only - "Anything the crew or office should know," shown on
+  // the property page's "Notes" card. Deliberately never sent to a guest
+  // (src/lib/bookingConfirmation.ts) or shown on the guest portal
+  // (src/app/guest/[token]/page.tsx) - the four fields below are the
+  // guest-facing equivalent, kept as separate fields specifically so this
+  // one never leaks into a guest-facing surface by accident.
   general_notes            String?
+  // Guest-facing fields (src/app/guest/[token]/page.tsx) - all optional,
+  // shown only when set.
+  wifi_name                  String?
+  wifi_password               String?
+  guest_checkin_instructions String? // building + unit access, the multi-unit-complex case
+  house_rules                 String?
   type                     PropertyType
   unit_count               Int
   assigned_cleaning_team   String?
@@ -405,6 +417,19 @@ model BookingConfirmation {
   email_sent               Boolean   @default(false)
   sms_sent                 Boolean   @default(false)
   errors                   String?
+  // No-login access control for the guest portal
+  // (src/app/guest/[token]/page.tsx) - same role WorkOrder.share_token
+  // plays for /wo/[token]. Generated once, the first time this row is
+  // created, for every reservation regardless of whether a send actually
+  // went out.
+  share_token              String?   @unique
+  // Cached here so the portal renders without a live Hostaway call,
+  // mirroring how WorkOrder snapshots its line items rather than
+  // re-fetching.
+  departure_date           DateTime?
+  check_in_hour            Int?
+  check_out_hour           Int?
+  confirmation_code        String?
   createdAt                DateTime  @default(now())
 
   @@map("booking_confirmations")

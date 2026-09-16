@@ -96,6 +96,27 @@ export async function updateGeneralNotes(propertyId: string, formData: FormData)
   revalidatePath(`/properties/${propertyId}`);
 }
 
+// Guest-facing fields shown on the guest portal (src/app/guest/[token]/page.tsx)
+// - deliberately separate from updateGeneralNotes above, which is internal-only.
+export async function updateGuestPortalInfo(propertyId: string, formData: FormData) {
+  const wifi_name = String(formData.get("wifi_name") ?? "").trim();
+  const wifi_password = String(formData.get("wifi_password") ?? "").trim();
+  const guest_checkin_instructions = String(formData.get("guest_checkin_instructions") ?? "").trim();
+  const house_rules = String(formData.get("house_rules") ?? "").trim();
+
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: {
+      wifi_name: wifi_name || null,
+      wifi_password: wifi_password || null,
+      guest_checkin_instructions: guest_checkin_instructions || null,
+      house_rules: house_rules || null,
+    },
+  });
+
+  revalidatePath(`/properties/${propertyId}`);
+}
+
 export async function updateAssignedTeamMember(propertyId: string, formData: FormData) {
   const teamMemberId = String(formData.get("assignedTeamMemberId") ?? "").trim();
 

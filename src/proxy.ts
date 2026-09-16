@@ -16,6 +16,10 @@ export default auth((req) => {
   // item" form - the token itself is the access control, not a session
   // (see src/app/cleaning/[token]/page.tsx).
   const isCleaningRoute = req.nextUrl.pathname.startsWith("/cleaning/");
+  // /guest/[token] is the unauthenticated guest portal - same
+  // token-is-the-access-control shape as the two routes above (see
+  // src/app/guest/[token]/page.tsx).
+  const isGuestRoute = req.nextUrl.pathname.startsWith("/guest/");
   // Presence only - the (dashboard) layout does the real lookup (active?
   // which sections?) since that needs Prisma, which middleware shouldn't
   // do on every request. An invalid/expired token just bounces to /login
@@ -28,6 +32,7 @@ export default auth((req) => {
     !isPublicWorkOrder &&
     !isAccessRoute &&
     !isCleaningRoute &&
+    !isGuestRoute &&
     !hasAccessCookie
   ) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

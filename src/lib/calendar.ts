@@ -63,3 +63,28 @@ export function zonedTimeToUtc(dateStr: string, hour: number, timezone: string):
 
   return new Date(naiveUtc.getTime() + offsetMs);
 }
+
+// Formats a bare hour (0-23, the shape Hostaway's checkInTime/checkOutTime
+// and this app's own check_in_hour/check_out_hour come in) as a 12-hour
+// clock string - shared by the guest booking-confirmation message
+// (src/lib/bookingConfirmation.ts) and the guest portal
+// (src/app/guest/[token]/page.tsx) so both render identically.
+export function formatHour(hour: number | null | undefined): string | null {
+  if (hour === null || hour === undefined) return null;
+  const period = hour >= 12 ? "PM" : "AM";
+  const twelveHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelveHour}:00 ${period}`;
+}
+
+// Formats a "YYYY-MM-DD" date string as a full weekday/month/day, in UTC
+// so it renders the same regardless of the server's or viewer's own
+// timezone - shared by the same two callers as formatHour above.
+export function formatReservationDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}

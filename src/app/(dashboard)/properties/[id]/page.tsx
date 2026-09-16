@@ -6,6 +6,7 @@ import {
   updatePropertyDetails,
   updateMasterDoorCode,
   updateGeneralNotes,
+  updateGuestPortalInfo,
   updateAssignedTeamMember,
   updateLicenseInfo,
   toggleGuestAutomationForProperty,
@@ -231,6 +232,59 @@ export default async function PropertyDetailPage({
           >
             Save
           </button>
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest-facing info</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Shown to the guest on their portal page (linked from the booking confirmation) — unlike Notes
+          above, this is meant for guests to see.
+        </p>
+        <form action={updateGuestPortalInfo.bind(null, property.id)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">WiFi network</label>
+            <input
+              name="wifi_name"
+              defaultValue={property.wifi_name ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">WiFi password</label>
+            <input
+              name="wifi_password"
+              defaultValue={property.wifi_password ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Building &amp; unit access instructions</label>
+            <textarea
+              name="guest_checkin_instructions"
+              rows={3}
+              defaultValue={property.guest_checkin_instructions ?? ""}
+              placeholder="e.g. Enter the building through the north door, code 1234#. Unit is upstairs, second door on the left."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">House rules</label>
+            <textarea
+              name="house_rules"
+              rows={3}
+              defaultValue={property.house_rules ?? ""}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="col-span-2">
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Save
+            </button>
+          </div>
         </form>
       </div>
 
