@@ -8,12 +8,18 @@ import {
   updateGeneralNotes,
   updateAssignedTeamMember,
   updateLicenseInfo,
+  updateSmartLock,
+  toggleGuestAutomationForProperty,
+  issueVendorAccessCode,
   createWorkOrderAction,
 } from "./actions";
 import { togglePropertyActive } from "../actions";
 import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
+import { getSeamApiKey } from "@/lib/settings";
+import { listSeamLocks } from "@/lib/seam";
 import DeletePropertyButton from "./DeletePropertyButton";
+import VendorAccessCodeForm from "./VendorAccessCodeForm";
 
 const licenseStatusStyles: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
@@ -56,6 +62,9 @@ export default async function PropertyDetailPage({
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
   const licenseStatus = computeLicenseStatus(property.license_expiration_date);
+
+  const seamApiKey = await getSeamApiKey();
+  const seamLocks = seamApiKey ? await listSeamLocks(seamApiKey).catch(() => []) : [];
 
   return (
     <div className="space-y-6">
@@ -152,6 +161,77 @@ export default async function PropertyDetailPage({
           </button>
         </form>
       </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest automation</h2>
+            <p className="text-sm text-gray-500">
+              Direct booking confirmations and smart-access codes for this property — also gated by the
+              master switch on the Settings page.
+            </p>
+          </div>
+          <form action={toggleGuestAutomationForProperty.bind(null, property.id, !property.guest_automation_enabled)}>
+            <button
+              type="submit"
+              className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium ${
+                property.guest_automation_enabled
+                  ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {property.guest_automation_enabled ? "On for this property" : "Off for this property"}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Smart lock</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Pilot Seam-backed door codes on this property. Not connected means guests keep using the
+          master door code above.
+        </p>
+        {!seamApiKey ? (
+          <p className="text-sm text-gray-400">Add a Seam API key on the Settings page first.</p>
+        ) : (
+          <form action={updateSmartLock.bind(null, property.id)} className="flex items-end gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="text-sm font-medium text-gray-700">Device</label>
+              <select
+                name="smart_lock_id"
+                defaultValue={property.smart_lock_id ?? ""}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Not connected</option>
+                {seamLocks.map((lock) => (
+                  <option key={lock.device_id} value={lock.device_id}>
+                    {lock.display_name} {lock.properties?.online === false ? "(offline)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+            >
+              Save
+            </button>
+          </form>
+        )}
+      </div>
+
+      {property.smart_lock_id && (
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="mb-1 text-sm font-semibold text-gray-900">Issue vendor access code</h2>
+          <p className="mb-4 text-sm text-gray-500">
+            A one-off code for a 3rd-party vendor (HVAC, etc.) — not the cleaning crew, who already have
+            their own access. Times are in this property&apos;s local timezone
+            {property.timezone ? ` (${property.timezone})` : " (not set — treated as UTC)"}.
+          </p>
+          <VendorAccessCodeForm action={issueVendorAccessCode.bind(null, property.id)} />
+        </div>
+      )}
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Notes</h2>

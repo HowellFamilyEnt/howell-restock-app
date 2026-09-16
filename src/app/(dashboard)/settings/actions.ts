@@ -49,6 +49,19 @@ export async function clearCredentialFields(fields: string[]): Promise<void> {
   revalidatePath("/settings");
 }
 
+// Master kill switch for every guest-facing automation (direct booking
+// confirmation, smart-access door codes) - see getGuestAutomationEnabled
+// in src/lib/settings.ts. Off by default; flipping it on here is the only
+// way anything actually reaches a real guest.
+export async function toggleGuestAutomation(next: boolean): Promise<void> {
+  await prisma.integrationSettings.upsert({
+    where: { id: "hostaway" },
+    update: { guest_automation_enabled: next },
+    create: { id: "hostaway", guest_automation_enabled: next },
+  });
+  revalidatePath("/settings");
+}
+
 const VALID_SECTION_KEYS = new Set<string>(ACCESS_SECTIONS.map((s) => s.key));
 
 export async function createAccessLink(formData: FormData) {

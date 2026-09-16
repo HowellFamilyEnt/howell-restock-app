@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { createWorkOrderForProperty } from "@/lib/workorders";
+import { getSeamApiKey } from "@/lib/settings";
+import { createSeamAccessCode } from "@/lib/seam";
+import { zonedTimeToUtc } from "@/lib/calendar";
 
 // Refuses to hard-delete a property that has real history (restock
 // events, notes, work orders) - only par levels (just config, not
@@ -148,6 +151,93 @@ export async function updateLicenseInfo(propertyId: string, formData: FormData) 
   revalidatePath("/properties");
   revalidatePath("/licenses");
   revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function updateSmartLock(propertyId: string, formData: FormData) {
+  const smart_lock_id = String(formData.get("smart_lock_id") ?? "").trim();
+
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { smart_lock_id: smart_lock_id || null },
+  });
+
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+// Bound-toggle, same pattern as togglePropertyActive in ../actions.ts -
+// per-property half of the guest-automation kill switch (the other half
+// is IntegrationSettings.guest_automation_enabled on the Settings page).
+export async function toggleGuestAutomationForProperty(propertyId: string, next: boolean) {
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { guest_automation_enabled: next },
+  });
+
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+// One-off code for a 3rd-party vendor (HVAC, etc.) - not the cleaning
+// crew, who already have their own access. Deliberately not modeled as a
+// WorkOrder: there's no par-level/checklist concept here, just a start
+// time, end time, and a label. Hour granularity only (matches
+// zonedTimeToUtc and the form's date+hour inputs, rather than a
+// datetime-local input that would imply minute precision this doesn't
+// actually have). Start/end are entered (and interpreted) in the
+// property's own local timezone, same as guest codes - falls back to UTC
+// for a property with no timezone on file (non-Hostaway properties never
+// get one from the sync).
+export async function issueVendorAccessCode(propertyId: string, _prevState: string | undefined, formData: FormData): Promise<string> {
+  const label = String(formData.get("label") ?? "").trim();
+  const startsDate = String(formData.get("starts_date") ?? "").trim();
+  const startsHour = Number(formData.get("starts_hour"));
+  const endsDate = String(formData.get("ends_date") ?? "").trim();
+  const endsHour = Number(formData.get("ends_hour"));
+
+  if (!label) return "Give it a label (e.g. \"HVAC\").";
+  if (!startsDate || !endsDate) return "Pick a start and end date.";
+  if (!Number.isInteger(startsHour) || !Number.isInteger(endsHour)) return "Pick a start and end hour.";
+
+  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  if (!property) return "Property not found.";
+  if (!property.smart_lock_id) return "No smart lock assigned to this property yet.";
+
+  const apiKey = await getSeamApiKey();
+  if (!apiKey) return "No Seam API key configured on the Settings page.";
+
+  const timezone = property.timezone ?? "UTC";
+  const startsAt = zonedTimeToUtc(startsDate, startsHour, timezone);
+  const endsAt = zonedTimeToUtc(endsDate, endsHour, timezone);
+
+  if (endsAt <= startsAt) return "End time must be after the start time.";
+
+  try {
+    const accessCode = await createSeamAccessCode(apiKey, {
+      deviceId: property.smart_lock_id,
+      name: label,
+      startsAt,
+      endsAt,
+      isOneTimeUse: true,
+    });
+
+    await prisma.guestAccessCode.create({
+      data: {
+        property_id: propertyId,
+        purpose: "vendor",
+        label,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        seam_access_code_id: accessCode.access_code_id,
+        code: accessCode.code,
+        status: accessCode.display_status ?? accessCode.status,
+      },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Seam request failed.";
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath("/guest-access-codes");
+  return "Code issued — see it on the Guest Access Codes page.";
 }
 
 export async function createWorkOrderAction(propertyId: string, formData: FormData) {

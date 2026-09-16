@@ -27,6 +27,9 @@ type HostawayListing = {
   bedroomsNumber?: number | null;
   bathroomsNumber?: number | null;
   airbnbExportStatus?: string | null;
+  // IANA name (e.g. "America/Chicago") - confirmed live 2026-09-16 present
+  // on both the bulk and single-listing endpoints, zero extra cost.
+  timeZoneName?: string | null;
 };
 
 type MappedListing = {
@@ -37,6 +40,7 @@ type MappedListing = {
   bedrooms: number | null;
   bathrooms: number | null;
   airbnbStatus: string | null;
+  timezone: string | null;
 };
 
 export async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
@@ -195,6 +199,7 @@ function mapListing(listing: HostawayListing): MappedListing {
     bedrooms: typeof listing.bedroomsNumber === "number" ? listing.bedroomsNumber : null,
     bathrooms: typeof listing.bathroomsNumber === "number" ? listing.bathroomsNumber : null,
     airbnbStatus: listing.airbnbExportStatus ?? null,
+    timezone: listing.timeZoneName ?? null,
   };
 }
 
@@ -425,6 +430,7 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           bedrooms: mapped.bedrooms,
           bathrooms: mapped.bathrooms,
           airbnb_status: mapped.airbnbStatus,
+          timezone: mapped.timezone,
         },
       });
       updated += 1;
@@ -436,6 +442,7 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           bedrooms: mapped.bedrooms,
           bathrooms: mapped.bathrooms,
           airbnb_status: mapped.airbnbStatus,
+          timezone: mapped.timezone,
           type: "STR",
           unit_count: mapped.unitCount,
           assigned_cleaning_team: null,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import CredentialForm from "./CredentialForm";
 import AccessLinksSection from "./AccessLinksSection";
+import { toggleGuestAutomation } from "./actions";
 import { baseUrl } from "@/lib/workorders";
 
 const WEBHOOK_URL_PATH = "/api/webhooks/hostaway";
@@ -24,11 +25,43 @@ export default async function SettingsPage() {
     process.env.SUPABASE_PROJECT_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
+  const guestAutomationEnabled = settings?.guest_automation_enabled ?? false;
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Settings</h1>
         <p className="text-sm text-gray-500">Integration credentials</p>
+      </div>
+
+      <div
+        className={`rounded-lg border p-6 ${
+          guestAutomationEnabled ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-white"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest automation</h2>
+            <p className="text-sm text-gray-600">
+              Master switch for everything guest-facing — direct booking confirmations and smart-access
+              door codes. Off by default so nothing reaches a real guest while it&apos;s being tested;
+              SuiteOp keeps handling guests in the meantime. Individual properties can also be excluded
+              on their own page even while this is on.
+            </p>
+          </div>
+          <form action={toggleGuestAutomation.bind(null, !guestAutomationEnabled)}>
+            <button
+              type="submit"
+              className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ${
+                guestAutomationEnabled
+                  ? "bg-amber-600 text-white hover:bg-amber-700"
+                  : "bg-gray-900 text-white hover:bg-gray-700"
+              }`}
+            >
+              {guestAutomationEnabled ? "On — turn off" : "Off — turn on"}
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -87,6 +120,17 @@ export default async function SettingsPage() {
               masked: mask(settings?.hostaway_webhook_password),
             },
           ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Seam (Smart Locks)</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Powers the per-property Smart lock and vendor access code sections on each property&apos;s
+          page. Get an API key from your Seam workspace dashboard.
+        </p>
+        <CredentialForm
+          fields={[{ name: "seam_api_key", label: "API Key", masked: mask(settings?.seam_api_key) }]}
         />
       </div>
 

@@ -80,6 +80,28 @@ export async function fetchReservationsNear(targetDate: Date): Promise<HostawayR
   }
 }
 
+// Every listingMapId occupied on `date` (arrival <= date < departure)
+// across the given reservations - factored out of computeScheduledTime's
+// own per-property version below so callers who need the bulk answer
+// (e.g. cleaningStatus.ts, computing "is anyone home today" for every
+// property in one pass) don't refetch/recompute per property.
+export function occupiedListingIdsOn(date: Date, reservations: HostawayReservation[]): Set<string> {
+  const target = isoDate(date);
+  const occupied = new Set<string>();
+  for (const r of reservations) {
+    let cursor = new Date(`${r.arrivalDate}T00:00:00Z`);
+    const departure = new Date(`${r.departureDate}T00:00:00Z`);
+    while (cursor < departure) {
+      if (isoDate(cursor) === target) {
+        occupied.add(String(r.listingMapId));
+        break;
+      }
+      cursor = addUtcDays(cursor, 1);
+    }
+  }
+  return occupied;
+}
+
 export async function computeScheduledTime(
   propertyId: string,
   targetDate: Date,

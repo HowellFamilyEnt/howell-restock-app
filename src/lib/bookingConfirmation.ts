@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail, sendSms } from "@/lib/notify";
+import { getGuestAutomationEnabled } from "@/lib/settings";
 import type { HostawayReservation } from "@/lib/hostaway";
 import type { Property } from "@prisma/client";
 
@@ -70,6 +71,28 @@ export async function sendBookingConfirmation(reservation: HostawayReservation):
         guest_name: guestName,
         arrival_date: arrivalDate,
         errors: "No matching property for this Hostaway listing.",
+      },
+    });
+    return;
+  }
+
+  // Kill switch, checked here (not earlier) so the "no matching property"
+  // case above still resolves the same way regardless - the switch only
+  // ever prevents a real send, never a diagnostic log entry. Global first
+  // since it's the one meant to be flipped off fast during testing.
+  const globalEnabled = await getGuestAutomationEnabled();
+  if (!globalEnabled || !property.guest_automation_enabled) {
+    await prisma.bookingConfirmation.upsert({
+      where: { hostaway_reservation_id: hostawayReservationId },
+      update: { property_id: property.id, guest_name: guestName, arrival_date: arrivalDate },
+      create: {
+        hostaway_reservation_id: hostawayReservationId,
+        property_id: property.id,
+        guest_name: guestName,
+        arrival_date: arrivalDate,
+        errors: !globalEnabled
+          ? "Guest automation is disabled in Settings - nothing sent."
+          : "Guest automation is disabled for this property - nothing sent.",
       },
     });
     return;

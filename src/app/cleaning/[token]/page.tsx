@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { submitCleaningNoteAction } from "./actions";
 import CleaningForm from "./CleaningForm";
+import CleaningStatusForm from "./CleaningStatusForm";
+import { activeCleaningStatuses, setCleaningStatus } from "@/lib/cleaningStatus";
 
 // Sorts by street name, then house number - e.g. "9 W Ranchwood Dr" before
 // "1712 NE 8th St" - so the crew can find an address the way they'd look
@@ -32,6 +34,8 @@ export default async function CleaningPage({
     return ka.houseNumber - kb.houseNumber;
   });
 
+  const statuses = await activeCleaningStatuses();
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-md space-y-6">
@@ -47,6 +51,20 @@ export default async function CleaningPage({
             properties={sorted.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
             action={submitCleaningNoteAction.bind(null, token)}
           />
+        </div>
+
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">Cleaning status</h2>
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <CleaningStatusForm
+              properties={sorted.map((p) => ({
+                id: p.id,
+                label: p.address ?? p.name_address,
+                status: statuses.get(p.id) ?? "ready",
+              }))}
+              action={setCleaningStatus}
+            />
+          </div>
         </div>
       </div>
     </div>

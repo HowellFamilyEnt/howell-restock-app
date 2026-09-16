@@ -95,6 +95,24 @@ export async function getHostawayWebhookCredentials(): Promise<HostawayWebhookCr
   return null;
 }
 
+export async function getSeamApiKey(): Promise<string | null> {
+  const envKey = process.env.SEAM_API_KEY;
+  if (envKey) return envKey;
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.seam_api_key ?? null;
+}
+
+// Master kill switch for every guest-facing automation (direct booking
+// confirmation, smart-access door codes) - deliberately DB-only, no env
+// var override, since this is meant to be a fast in-app toggle during
+// testing rather than deployment config. Defaults false (nothing built on
+// top of this ever assumes it's on).
+export async function getGuestAutomationEnabled(): Promise<boolean> {
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.guest_automation_enabled ?? false;
+}
+
 export type SmsCredentials = {
   accountSid: string;
   authToken: string;

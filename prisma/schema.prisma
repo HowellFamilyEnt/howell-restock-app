@@ -66,9 +66,38 @@ model Property {
   // Null until the first sync after this field existed. Separate from
   // `active`, which is this app's own archive flag, not Hostaway's.
   airbnb_status            String?
+  // IANA timezone name (e.g. "America/Chicago") from Hostaway's listing
+  // timeZoneName - captured for free during the regular Hostaway sync
+  // (confirmed live 2026-09-16, present on both the bulk and single-listing
+  // endpoints). Needed to convert a reservation's checkInTime/checkOutTime
+  // (bare local hours - see the comment on SCHEDULE_HOUR_UTC in
+  // scheduling.ts) into a real UTC instant for Seam, which schedules real
+  // hardware and can't tolerate the "just use a fixed UTC hour" shortcut
+  // used elsewhere in this app for less time-critical scheduling.
+  timezone                 String?
   hostaway_listing_id      String?        @unique
   source                   PropertySource @default(Manual)
   assignedTeamMemberId     String?
+  // Crew-set Not ready/Ready state on the /cleaning/[token] page - a live
+  // reservation covering today overrides this to "Occupied" for display
+  // only (src/lib/cleaningStatus.ts), the stored value is untouched and
+  // takes over again once the stay ends. Defaults every property to
+  // "ready", which is an assumption about today's real-world state with
+  // no way to verify from here - worth a one-time correction pass if
+  // wrong for any property.
+  cleaning_status          String         @default("ready")
+  // The Seam device_id piloted on this property, if any - most properties
+  // are null (not yet on smart access). Set from the live device list via
+  // src/lib/seam.ts's listSeamLocks.
+  smart_lock_id            String?
+  // Per-property kill switch for anything guest-facing (direct booking
+  // confirmation, smart-access codes) - checked alongside the global
+  // IntegrationSettings.guest_automation_enabled switch by
+  // sendBookingConfirmation/provisionGuestAccessCode. Defaults true (once
+  // the global switch is on, a property participates unless explicitly
+  // excluded) - the global switch, not this one, is the "nothing sends
+  // yet" gate during testing.
+  guest_automation_enabled Boolean        @default(true)
   // Free-form grouping label for the Properties page (src/app/(dashboard)/properties/page.tsx)
   // - e.g. a neighborhood or region. Purely organizational, derived groups
   // (like license_owner), no separate table - picking/typing a value on
@@ -103,6 +132,7 @@ model Property {
   assignedTeamMember   TeamMember?           @relation(fields: [assignedTeamMemberId], references: [id])
   workOrders           WorkOrder[]
   bookingConfirmations BookingConfirmation[]
+  guestAccessCodes     GuestAccessCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -298,6 +328,15 @@ model IntegrationSettings {
   // (401) if these aren't set, unlike most other credentials here.
   hostaway_webhook_username String?
   hostaway_webhook_password String?
+  // Master kill switch for every guest-facing automation (direct booking
+  // confirmation, smart-access door codes) - defaults OFF so nothing
+  // sends to a real guest until explicitly turned on here, letting
+  // SuiteOp keep doing that job during testing. Checked by
+  // sendBookingConfirmation and provisionGuestAccessCode before either
+  // ever contacts a guest; Property.guest_automation_enabled is the
+  // narrower per-property version of the same gate.
+  guest_automation_enabled  Boolean  @default(false)
+  seam_api_key              String?
   resend_api_key            String?
   resend_from_email         String?
   twilio_account_sid        String?
@@ -369,6 +408,32 @@ model BookingConfirmation {
   createdAt                DateTime  @default(now())
 
   @@map("booking_confirmations")
+}
+
+// A Seam-issued door code for one reservation ("guest") or a one-off
+// vendor visit like HVAC ("vendor"). Plays the same idempotency-log role
+// BookingConfirmation plays for P1: hostaway_reservation_id doubles as
+// the retry guard for guest codes (unique, null for vendor codes since
+// those aren't reservation-triggered and there can be several per
+// property). Time-bound codes and their backups self-revoke on Seam's
+// side at ends_at - nothing here needs to actively revoke anything.
+model GuestAccessCode {
+  id                      String    @id @default(cuid())
+  property_id             String
+  property                Property  @relation(fields: [property_id], references: [id])
+  hostaway_reservation_id String?   @unique
+  purpose                 String // "guest" | "vendor"
+  label                   String? // guest name, or a vendor label like "HVAC"
+  seam_access_code_id     String?
+  seam_backup_pulled_at   DateTime?
+  code                    String?
+  starts_at               DateTime?
+  ends_at                 DateTime?
+  status                  String? // Seam's display_status, cached
+  error                   String?
+  createdAt               DateTime  @default(now())
+
+  @@map("guest_access_codes")
 }
 
 // A shareable, no-login URL (/access/[token]) that grants whichever

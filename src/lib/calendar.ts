@@ -41,3 +41,25 @@ export function prevMonth(year: number, month: number): { year: number; month: n
 export function nextMonth(year: number, month: number): { year: number; month: number } {
   return month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
 }
+
+// Converts a local wall-clock hour on a given date, in an arbitrary IANA
+// timezone, to the correct UTC instant - needed for Seam (src/lib/seam.ts),
+// which schedules real door-lock hardware and can't tolerate the
+// fixed-UTC-hour shortcut used elsewhere in this app for less time-critical
+// scheduling (see SCHEDULE_HOUR_UTC in scheduling.ts). Standard
+// Intl-offset-diff technique, no date library needed: build a naive guess
+// treating the wall-clock time as UTC, then measure how far that guess's
+// UTC-formatted string differs from its `timezone`-formatted string at that
+// same instant, and shift by the difference. Correct across DST boundaries
+// because the offset is measured at the actual date in question, not
+// assumed fixed.
+export function zonedTimeToUtc(dateStr: string, hour: number, timezone: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const naiveUtc = new Date(Date.UTC(year, month - 1, day, hour));
+
+  const asUtc = new Date(naiveUtc.toLocaleString("en-US", { timeZone: "UTC" }));
+  const asZoned = new Date(naiveUtc.toLocaleString("en-US", { timeZone: timezone }));
+  const offsetMs = asUtc.getTime() - asZoned.getTime();
+
+  return new Date(naiveUtc.getTime() + offsetMs);
+}

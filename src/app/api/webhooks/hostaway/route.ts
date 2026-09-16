@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHostawayCredentials, getHostawayWebhookCredentials } from "@/lib/settings";
 import { getAccessToken, fetchReservationById } from "@/lib/hostaway";
 import { sendBookingConfirmation } from "@/lib/bookingConfirmation";
+import { provisionGuestAccessCode } from "@/lib/guestAccess";
 
 function isAuthorized(request: NextRequest, username: string, password: string): boolean {
   const auth = request.headers.get("authorization");
@@ -86,9 +87,21 @@ export async function POST(request: NextRequest) {
     }
     const token = await getAccessToken(credentials.accountId, credentials.apiKey);
     const reservation = await fetchReservationById(token, reservationId);
-    await sendBookingConfirmation(reservation);
+
+    // Independently try/caught - a Seam failure should never block the
+    // guest's email/text, and vice versa.
+    try {
+      await sendBookingConfirmation(reservation);
+    } catch (error) {
+      console.error("Hostaway webhook: failed to send booking confirmation", error);
+    }
+    try {
+      await provisionGuestAccessCode(reservation);
+    } catch (error) {
+      console.error("Hostaway webhook: failed to provision guest access code", error);
+    }
   } catch (error) {
-    console.error("Hostaway webhook: failed to send booking confirmation", error);
+    console.error("Hostaway webhook: failed to fetch reservation", error);
   }
 
   return NextResponse.json({ ok: true });

@@ -16,6 +16,7 @@ const ALL_NAV_ITEMS = [
   { href: "/listings/new", label: "New Listing" },
   { href: "/templates", label: "Templates" },
   { href: "/booking-confirmations", label: "Booking Confirmations" },
+  { href: "/guest-access-codes", label: "Guest Access Codes" },
 ];
 
 export default async function DashboardLayout({
