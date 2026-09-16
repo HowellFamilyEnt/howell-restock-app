@@ -181,7 +181,7 @@ export default async function LicensesPage({
                       action={updateLicenseInfo.bind(null, row.id)}
                       className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_auto] items-center gap-2 px-4 py-2"
                     >
-                      <Link href={`/properties/${row.id}`} className="min-w-0 truncate text-sm font-medium text-gray-900 hover:underline">
+                      <Link href={`/properties/${row.id}`} target="_blank" className="min-w-0 truncate text-sm font-medium text-gray-900 hover:underline">
                         {row.name}
                       </Link>
                       <OwnerField owners={allOwners} defaultValue={row.owner ?? ""} />
@@ -228,7 +228,7 @@ export default async function LicensesPage({
                   className="space-y-2 rounded-lg border border-gray-200 p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Link href={`/properties/${row.id}`} className="font-medium text-gray-900 hover:underline">
+                    <Link href={`/properties/${row.id}`} target="_blank" className="font-medium text-gray-900 hover:underline">
                       {row.name}
                     </Link>
                     <span

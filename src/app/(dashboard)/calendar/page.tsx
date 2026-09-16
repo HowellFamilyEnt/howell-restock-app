@@ -210,6 +210,7 @@ export default async function CalendarPage({
               <Link
                 key={property.id}
                 href={`/properties/${property.id}`}
+                target="_blank"
                 className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:underline"
               >
                 {property.name_address}
