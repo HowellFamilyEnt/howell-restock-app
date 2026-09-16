@@ -272,6 +272,14 @@ export default async function PropertyDetailPage({
         <p className="mb-4 text-sm text-gray-500">
           Shown to the guest on their portal page (linked from the booking confirmation) — unlike Notes
           above, this is meant for guests to see.
+          {property.source === "Hostaway" && (
+            <>
+              {" "}
+              WiFi and house rules below sync from Hostaway (overwritten on the next sync, like
+              address/bed/bath) — edit them there, not here. Building &amp; unit access instructions and
+              the photo steps below are yours and won&apos;t be touched by a sync.
+            </>
+          )}
         </p>
         <form action={updateGuestPortalInfo.bind(null, property.id)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1">

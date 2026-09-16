@@ -30,6 +30,15 @@ type HostawayListing = {
   // IANA name (e.g. "America/Chicago") - confirmed live 2026-09-16 present
   // on both the bulk and single-listing endpoints, zero extra cost.
   timeZoneName?: string | null;
+  // Confirmed live 2026-09-16, present on the bulk endpoint too, zero
+  // extra cost - Hostaway is the more authoritative, better-maintained
+  // source for these (they're already what's shown to guests on
+  // Airbnb/VRBO), so they sync the same way address/bedrooms/bathrooms
+  // do: overwritten on every sync, not left alone like master_door_code
+  // or general_notes.
+  wifiUsername?: string | null;
+  wifiPassword?: string | null;
+  houseRules?: string | null;
 };
 
 type MappedListing = {
@@ -41,6 +50,9 @@ type MappedListing = {
   bathrooms: number | null;
   airbnbStatus: string | null;
   timezone: string | null;
+  wifiName: string | null;
+  wifiPassword: string | null;
+  houseRules: string | null;
 };
 
 export async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
@@ -229,6 +241,9 @@ function mapListing(listing: HostawayListing): MappedListing {
     bathrooms: typeof listing.bathroomsNumber === "number" ? listing.bathroomsNumber : null,
     airbnbStatus: listing.airbnbExportStatus ?? null,
     timezone: listing.timeZoneName ?? null,
+    wifiName: listing.wifiUsername ?? null,
+    wifiPassword: listing.wifiPassword ?? null,
+    houseRules: listing.houseRules ?? null,
   };
 }
 
@@ -460,6 +475,9 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           bathrooms: mapped.bathrooms,
           airbnb_status: mapped.airbnbStatus,
           timezone: mapped.timezone,
+          wifi_name: mapped.wifiName,
+          wifi_password: mapped.wifiPassword,
+          house_rules: mapped.houseRules,
         },
       });
       updated += 1;
@@ -472,6 +490,9 @@ export async function syncHostawayListings(): Promise<HostawaySyncResult> {
           bathrooms: mapped.bathrooms,
           airbnb_status: mapped.airbnbStatus,
           timezone: mapped.timezone,
+          wifi_name: mapped.wifiName,
+          wifi_password: mapped.wifiPassword,
+          house_rules: mapped.houseRules,
           type: "STR",
           unit_count: mapped.unitCount,
           assigned_cleaning_team: null,
