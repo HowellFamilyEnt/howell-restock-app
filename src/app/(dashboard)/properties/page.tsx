@@ -4,6 +4,19 @@ import { createProperty, togglePropertyActive, updateArea } from "./actions";
 import HostawaySyncButton from "./HostawaySyncButton";
 import CreatableGroupSelect from "@/components/CreatableGroupSelect";
 import PropertyStatusBadge from "./PropertyStatusBadge";
+import { activeCleaningStatuses, type CleaningStatus } from "@/lib/cleaningStatus";
+
+const CLEANING_STATUS_STYLES: Record<CleaningStatus, string> = {
+  not_ready: "bg-red-100 text-red-700",
+  ready: "bg-green-100 text-green-700",
+  occupied: "bg-gray-200 text-gray-600",
+};
+
+const CLEANING_STATUS_LABELS: Record<CleaningStatus, string> = {
+  not_ready: "Not ready",
+  ready: "Ready",
+  occupied: "Occupied",
+};
 
 const AREA_UNASSIGNED = "No area set";
 
@@ -35,6 +48,8 @@ export default async function PropertiesPage({
     if (b === AREA_UNASSIGNED) return -1;
     return a.localeCompare(b);
   });
+
+  const cleaningStatuses = await activeCleaningStatuses();
 
   return (
     <div className="space-y-8">
@@ -76,7 +91,7 @@ export default async function PropertiesPage({
                     <th className="px-4 py-2">Address</th>
                     <th className="px-4 py-2">Beds/Baths</th>
                     <th className="px-4 py-2">Area</th>
-                    <th className="px-4 py-2">Crew</th>
+                    <th className="px-4 py-2">Cleaning</th>
                     <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2"></th>
                   </tr>
@@ -116,7 +131,18 @@ export default async function PropertiesPage({
                           </button>
                         </form>
                       </td>
-                      <td className="px-4 py-2 text-gray-600">{property.assigned_cleaning_team ?? "—"}</td>
+                      <td className="px-4 py-2">
+                        {(() => {
+                          const status = cleaningStatuses.get(property.id) ?? "ready";
+                          return (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${CLEANING_STATUS_STYLES[status]}`}
+                            >
+                              {CLEANING_STATUS_LABELS[status]}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-2">
                         <PropertyStatusBadge
                           propertyName={property.name_address}
@@ -159,11 +185,20 @@ export default async function PropertiesPage({
                     />
                   </div>
                   {property.address && <p className="mt-1 text-sm text-gray-500">{property.address}</p>}
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                     <span>
                       {property.bedrooms ?? "—"}bd / {property.bathrooms ?? "—"}ba
                     </span>
-                    <span>Crew: {property.assigned_cleaning_team ?? "—"}</span>
+                    {(() => {
+                      const status = cleaningStatuses.get(property.id) ?? "ready";
+                      return (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${CLEANING_STATUS_STYLES[status]}`}
+                        >
+                          {CLEANING_STATUS_LABELS[status]}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <form
                     action={updateArea.bind(null, property.id)}
