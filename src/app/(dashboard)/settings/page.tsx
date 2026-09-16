@@ -15,6 +15,11 @@ function mask(value: string | null | undefined): string | null {
 export default async function SettingsPage() {
   const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
   const accessLinks = await prisma.accessLink.findMany({ orderBy: { createdAt: "desc" } });
+  const properties = await prisma.property.findMany({
+    where: { active: true },
+    select: { id: true, name_address: true },
+    orderBy: { name_address: "asc" },
+  });
 
   const hostawayEnvConfigured = Boolean(process.env.HOSTAWAY_ACCOUNT_ID && process.env.HOSTAWAY_API_KEY);
   const emailEnvConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
@@ -62,6 +67,37 @@ export default async function SettingsPage() {
             </button>
           </form>
         </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Preview guest portal</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          See (and test) what a guest sees for any property — placeholder dates, no real reservation
+          needed. Never sends anything.
+        </p>
+        <form action="/guest-preview" className="flex items-end gap-3">
+          <div className="flex-1 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Property</label>
+            <select
+              name="propertyId"
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select a property...</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name_address}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Preview
+          </button>
+        </form>
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
