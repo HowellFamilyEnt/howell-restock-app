@@ -20,6 +20,7 @@ import {
 import { togglePropertyActive } from "../actions";
 import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
+import { activeCleaningStatuses } from "@/lib/cleaningStatus";
 import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
 import CheckinPhotoForm from "./CheckinPhotoForm";
@@ -36,6 +37,21 @@ const licenseStatusLabels: Record<string, string> = {
   ExpiringSoon: "Expiring soon",
   Expired: "Expired",
   NotSet: "Not set",
+};
+
+// Same three states as the crew-facing toggle on /cleaning/[token] -
+// both read from the identical activeCleaningStatuses() source
+// (src/lib/cleaningStatus.ts), so this badge and that page's always agree.
+const cleaningStatusStyles: Record<string, string> = {
+  not_ready: "bg-red-100 text-red-700",
+  ready: "bg-green-100 text-green-700",
+  occupied: "bg-gray-200 text-gray-600",
+};
+
+const cleaningStatusLabels: Record<string, string> = {
+  not_ready: "Not ready",
+  ready: "Ready",
+  occupied: "Occupied",
 };
 
 export default async function PropertyDetailPage({
@@ -71,13 +87,23 @@ export default async function PropertyDetailPage({
     ? await prisma.seamLock.findUnique({ where: { device_id: property.smart_lock_id } })
     : null;
 
+  const cleaningStatuses = await activeCleaningStatuses();
+  const cleaningStatus = cleaningStatuses.get(property.id) ?? "ready";
+
   return (
     <div className="space-y-6">
       <div>
         <Link href="/properties" className="text-sm text-gray-500 hover:text-gray-900">
           ← Properties
         </Link>
-        <h1 className="text-lg font-semibold text-gray-900">{property.name_address}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold text-gray-900">{property.name_address}</h1>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${cleaningStatusStyles[cleaningStatus]}`}
+          >
+            {cleaningStatusLabels[cleaningStatus]}
+          </span>
+        </div>
         <p className="text-sm text-gray-500">
           {property.type} · {property.unit_count} unit{property.unit_count === 1 ? "" : "s"} · cadence{" "}
           {property.restock_frequency_days}d

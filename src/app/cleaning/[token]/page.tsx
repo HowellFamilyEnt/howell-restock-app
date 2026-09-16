@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { submitCleaningNoteAction } from "./actions";
-import CleaningForm from "./CleaningForm";
-import CleaningStatusForm from "./CleaningStatusForm";
-import { activeCleaningStatuses, setCleaningStatus } from "@/lib/cleaningStatus";
+import CleaningPageForm from "./CleaningPageForm";
+import { activeCleaningStatuses, markCleaned } from "@/lib/cleaningStatus";
 
 // Sorts by street name, then house number - e.g. "9 W Ranchwood Dr" before
 // "1712 NE 8th St" - so the crew can find an address the way they'd look
@@ -42,29 +41,21 @@ export default async function CleaningPage({
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Cleaning</h1>
           <p className="text-sm text-gray-500">
-            See something out or running low? Pick the property, say what&apos;s needed, and submit.
+            Pick the property. Flag anything out or running low, and mark it cleaned when you&apos;re
+            done.
           </p>
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <CleaningForm
-            properties={sorted.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
-            action={submitCleaningNoteAction.bind(null, token)}
+          <CleaningPageForm
+            properties={sorted.map((p) => ({
+              id: p.id,
+              label: p.address ?? p.name_address,
+              status: statuses.get(p.id) ?? "ready",
+            }))}
+            noteAction={submitCleaningNoteAction.bind(null, token)}
+            markCleanedAction={markCleaned}
           />
-        </div>
-
-        <div>
-          <h2 className="mb-2 text-sm font-semibold text-gray-900">Cleaning status</h2>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <CleaningStatusForm
-              properties={sorted.map((p) => ({
-                id: p.id,
-                label: p.address ?? p.name_address,
-                status: statuses.get(p.id) ?? "ready",
-              }))}
-              action={setCleaningStatus}
-            />
-          </div>
         </div>
       </div>
     </div>
