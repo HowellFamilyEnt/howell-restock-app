@@ -46,6 +46,7 @@ export default function GuestPortalView({
   digitalKey,
   checkinPhotos,
   backupCodeSlot,
+  upgradesSection,
 }: {
   property: GuestPortalProperty;
   arrivalDateStr: string | null | undefined;
@@ -55,6 +56,10 @@ export default function GuestPortalView({
   digitalKey: GuestPortalDigitalKey | null;
   checkinPhotos: GuestPortalCheckinPhoto[];
   backupCodeSlot?: React.ReactNode;
+  // Upgrade-request forms (SuiteOp roadmap P4) - only ever passed by the
+  // real guest portal, never /guest-preview, which must not be able to
+  // trigger a real Stripe charge.
+  upgradesSection?: React.ReactNode;
 }) {
   const checkInLabel = formatHour(checkInHour);
   const checkOutLabel = formatHour(checkOutHour);
@@ -154,6 +159,8 @@ export default function GuestPortalView({
           <p className="whitespace-pre-wrap text-sm text-gray-700">{property.house_rules}</p>
         </Section>
       )}
+
+      {upgradesSection}
     </div>
   );
 }

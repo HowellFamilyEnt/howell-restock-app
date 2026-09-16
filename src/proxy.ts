@@ -20,6 +20,10 @@ export default auth((req) => {
   // token-is-the-access-control shape as the two routes above (see
   // src/app/guest/[token]/page.tsx).
   const isGuestRoute = req.nextUrl.pathname.startsWith("/guest/");
+  // /upgrade-review/[token] is the unauthenticated staff review page
+  // linked from Slack - same token-is-the-access-control shape (see
+  // src/app/upgrade-review/[token]/page.tsx).
+  const isUpgradeReviewRoute = req.nextUrl.pathname.startsWith("/upgrade-review/");
   // Presence only - the (dashboard) layout does the real lookup (active?
   // which sections?) since that needs Prisma, which middleware shouldn't
   // do on every request. An invalid/expired token just bounces to /login
@@ -33,6 +37,7 @@ export default auth((req) => {
     !isAccessRoute &&
     !isCleaningRoute &&
     !isGuestRoute &&
+    !isUpgradeReviewRoute &&
     !hasAccessCookie
   ) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

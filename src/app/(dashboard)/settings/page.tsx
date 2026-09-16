@@ -171,6 +171,49 @@ export default async function SettingsPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Slack</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Posts upgrade requests to your #upsell channel and reacts ✅/❌ once decided. Create a Slack
+          app at api.slack.com/apps with <span className="font-mono text-xs">chat:write</span> and{" "}
+          <span className="font-mono text-xs">reactions:write</span> bot scopes, install it, invite the
+          bot into the channel, then enter its Bot User OAuth Token (starts with{" "}
+          <span className="font-mono text-xs">xoxb-</span>) and the channel&apos;s ID below.
+        </p>
+        <CredentialForm
+          fields={[
+            { name: "slack_bot_token", label: "Bot Token", masked: mask(settings?.slack_bot_token) },
+            {
+              name: "slack_channel_id",
+              label: "Channel ID",
+              masked: settings?.slack_channel_id ?? null,
+              placeholder: "C0123456789",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Stripe</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Charges guests for approved upgrade requests. Use test-mode keys (
+          <span className="font-mono text-xs">sk_test_...</span> /{" "}
+          <span className="font-mono text-xs">pk_test_...</span>) first — fully testable with zero real
+          money, using Stripe&apos;s standard test card 4242 4242 4242 4242.
+        </p>
+        <CredentialForm
+          fields={[
+            { name: "stripe_secret_key", label: "Secret Key", masked: mask(settings?.stripe_secret_key) },
+            {
+              name: "stripe_publishable_key",
+              label: "Publishable Key",
+              masked: settings?.stripe_publishable_key ?? null,
+              placeholder: "pk_test_...",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Email (Resend)</h2>
         <p className="mb-4 text-sm text-gray-500">
           Used to email work order links to team members. Get an API key at resend.com and verify a

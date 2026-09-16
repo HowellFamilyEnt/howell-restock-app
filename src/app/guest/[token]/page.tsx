@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import GuestPortalView from "@/components/GuestPortalView";
+import UpgradeRequestSection from "@/components/UpgradeRequestSection";
 import BackupCodeButton from "./BackupCodeButton";
+import { getStripePublishableKey, getGuestAutomationEnabled } from "@/lib/settings";
+import { EARLY_CHECKIN_TIERS, LATE_CHECKOUT_TIERS, ADDON_TIERS } from "@/lib/upgradeTiers";
 
 // No-login guest portal (SuiteOp roadmap P3), reached via the link in the
 // direct booking-confirmation email/text (src/lib/bookingConfirmation.ts).
@@ -24,12 +27,19 @@ export default async function GuestPortalPage({
   if (!confirmation || !confirmation.property) notFound();
   const property = confirmation.property;
 
-  const [guestAccessCode, checkinPhotos] = await Promise.all([
+  const [guestAccessCode, checkinPhotos, stripePublishableKey, guestAutomationEnabled] = await Promise.all([
     prisma.guestAccessCode.findUnique({
       where: { hostaway_reservation_id: confirmation.hostaway_reservation_id },
     }),
     prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+    getStripePublishableKey(),
+    getGuestAutomationEnabled(),
   ]);
+
+  // Upgrades (SuiteOp roadmap P4) - same guest-automation gate as
+  // everything else guest-facing, plus a real Stripe key to actually
+  // collect a card with.
+  const upgradesAvailable = stripePublishableKey && guestAutomationEnabled && property.guest_automation_enabled;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">
@@ -46,6 +56,37 @@ export default async function GuestPortalPage({
         }
         checkinPhotos={checkinPhotos}
         backupCodeSlot={<BackupCodeButton token={token} />}
+        upgradesSection={
+          upgradesAvailable ? (
+            <div className="space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900">Upgrades</h2>
+              <UpgradeRequestSection
+                title="Early Check-In"
+                description="Arrive before the standard check-in time."
+                category="early_checkin"
+                tiers={EARLY_CHECKIN_TIERS}
+                guestPortalToken={token}
+                publishableKey={stripePublishableKey!}
+              />
+              <UpgradeRequestSection
+                title="Late Check-Out"
+                description="Stay past the standard check-out time."
+                category="late_checkout"
+                tiers={LATE_CHECKOUT_TIERS}
+                guestPortalToken={token}
+                publishableKey={stripePublishableKey!}
+              />
+              <UpgradeRequestSection
+                title="Add-ons"
+                description="Extra items for your stay."
+                category="addon"
+                tiers={ADDON_TIERS}
+                guestPortalToken={token}
+                publishableKey={stripePublishableKey!}
+              />
+            </div>
+          ) : null
+        }
       />
     </div>
   );

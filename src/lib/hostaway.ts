@@ -143,6 +143,35 @@ export async function fetchReservationById(token: string, id: number): Promise<H
   return data.result;
 }
 
+// Writes a new check-in/check-out time back to a reservation - used when
+// an upgrade request (early check-in / late checkout) is approved. Plain
+// integer local hours, same confirmed-live convention as the field when
+// reading it (sampled 20 real reservations across different properties
+// before relying on this - values cluster at 16/10, a normal local
+// check-in, never what UTC-converted values would look like). This is
+// the first place this app writes to a reservation rather than only
+// reading one - not live-tested until a specific real reservation is
+// designated to try it against.
+export async function updateReservationTimes(
+  token: string,
+  reservationId: number,
+  input: { checkInTime?: number; checkOutTime?: number }
+): Promise<void> {
+  const res = await fetch(`${RESERVATIONS_URL}/${reservationId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Hostaway reservation ${reservationId} update failed: ${res.status} ${text.slice(0, 200)}`);
+  }
+}
+
 // Verified against a live account (2026-09-10): the `listingMapId` query
 // param is silently ignored (does NOT filter server-side - the account has
 // ~8,500 reservations across every listing, so fetching unfiltered is not

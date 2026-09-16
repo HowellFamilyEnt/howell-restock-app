@@ -113,6 +113,42 @@ export async function getGuestAutomationEnabled(): Promise<boolean> {
   return settings?.guest_automation_enabled ?? false;
 }
 
+export type SlackCredentials = {
+  botToken: string;
+  channelId: string;
+};
+
+export async function getSlackCredentials(): Promise<SlackCredentials | null> {
+  const envToken = process.env.SLACK_BOT_TOKEN;
+  const envChannel = process.env.SLACK_CHANNEL_ID;
+  if (envToken && envChannel) {
+    return { botToken: envToken, channelId: envChannel };
+  }
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  if (settings?.slack_bot_token && settings?.slack_channel_id) {
+    return { botToken: settings.slack_bot_token, channelId: settings.slack_channel_id };
+  }
+
+  return null;
+}
+
+export async function getStripeSecretKey(): Promise<string | null> {
+  const envKey = process.env.STRIPE_SECRET_KEY;
+  if (envKey) return envKey;
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.stripe_secret_key ?? null;
+}
+
+export async function getStripePublishableKey(): Promise<string | null> {
+  const envKey = process.env.STRIPE_PUBLISHABLE_KEY;
+  if (envKey) return envKey;
+
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.stripe_publishable_key ?? null;
+}
+
 export type SmsCredentials = {
   accountSid: string;
   authToken: string;

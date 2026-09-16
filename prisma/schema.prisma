@@ -146,6 +146,7 @@ model Property {
   bookingConfirmations BookingConfirmation[]
   guestAccessCodes     GuestAccessCode[]
   checkinPhotos        CheckinPhoto[]
+  upgradeRequests      UpgradeRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,6 +351,19 @@ model IntegrationSettings {
   // narrower per-property version of the same gate.
   guest_automation_enabled  Boolean  @default(false)
   seam_api_key              String?
+  // Bot User OAuth Token (xoxb-...) from a Slack app with chat:write +
+  // reactions:write, invited into the target channel - see
+  // src/lib/slack.ts. slack_channel_id is that channel's ID (not name),
+  // e.g. from "View channel details" in Slack.
+  slack_bot_token           String?
+  slack_channel_id          String?
+  // Stripe keys for the upgrade-request flow (src/lib/stripe.ts) -
+  // secret key used server-side, publishable key loaded client-side by
+  // Stripe.js to render the card form. Use test-mode keys (sk_test_.../
+  // pk_test_...) to verify this feature with zero real financial risk
+  // before switching to live keys.
+  stripe_secret_key         String?
+  stripe_publishable_key    String?
   resend_api_key            String?
   resend_from_email         String?
   twilio_account_sid        String?
@@ -512,6 +526,49 @@ model CheckinPhoto {
   createdAt   DateTime @default(now())
 
   @@map("checkin_photos")
+}
+
+// A guest's request for an upgrade (early check-in, late checkout, or an
+// add-on), reviewed by the team over Slack (SuiteOp roadmap P4). One row
+// per selection - a guest requesting both early check-in and an add-on
+// creates two rows, two Slack posts, two independent approvals, matching
+// how SuiteOp's own Slack message is one-upsell-per-message.
+model UpgradeRequest {
+  id                      String    @id @default(cuid())
+  property_id             String
+  property                Property  @relation(fields: [property_id], references: [id])
+  hostaway_reservation_id String
+  // No-login access control for the review page
+  // (src/app/upgrade-review/[token]/page.tsx), same shape as
+  // WorkOrder.share_token.
+  share_token             String    @unique
+
+  category           String // "early_checkin" | "late_checkout" | "addon"
+  // Snapshot of the tier's label/price at request time
+  // (src/lib/upgradeTiers.ts), so a later change to that file doesn't
+  // rewrite the story of what this particular guest actually agreed to.
+  tier_label          String
+  price_cents         Int
+  new_check_in_hour   Int? // set for category = early_checkin
+  new_check_out_hour  Int? // set for category = late_checkout
+  guest_note          String?
+  guest_name          String?
+  guest_email         String?
+
+  stripe_customer_id       String?
+  stripe_setup_intent_id   String?
+  stripe_payment_method_id String?
+  stripe_payment_intent_id String?
+
+  // awaiting_payment_method -> pending -> approved | denied | payment_failed
+  status           String    @default("awaiting_payment_method")
+  slack_message_ts String?
+  decided_by_name  String?
+  decided_at       DateTime?
+  error            String?
+  createdAt        DateTime  @default(now())
+
+  @@map("upgrade_requests")
 }
 
 // A shareable, no-login URL (/access/[token]) that grants whichever

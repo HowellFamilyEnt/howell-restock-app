@@ -94,3 +94,21 @@ export async function pullSeamBackupAccessCode(apiKey: string, accessCodeId: str
   });
   return data.access_code;
 }
+
+// Shifts an already-issued code's active window - used when an upgrade
+// request (early check-in / late checkout) is approved, so the guest's
+// existing code doesn't need to be deleted and recreated. Docs list this
+// as PATCH, but every other Seam endpoint here has confirmed live as POST
+// despite what the docs say - using POST for consistency, to be adjusted
+// if a live call proves otherwise.
+export async function updateSeamAccessCode(
+  apiKey: string,
+  input: { accessCodeId: string; startsAt: Date; endsAt: Date }
+): Promise<SeamAccessCode> {
+  const data = await seamRequest<{ access_code: SeamAccessCode }>(apiKey, "/access_codes/update", {
+    access_code_id: input.accessCodeId,
+    starts_at: input.startsAt.toISOString(),
+    ends_at: input.endsAt.toISOString(),
+  });
+  return data.access_code;
+}
