@@ -17,7 +17,17 @@ export type GuestPortalProperty = {
   wifi_name: string | null;
   wifi_password: string | null;
   house_rules: string | null;
+  parking_instructions: string | null;
+  building_photo_url: string | null;
 };
+
+// Google's universal maps link - opens the native Maps app on
+// Android/iOS if one's installed (whichever the device treats as
+// default), falls back to Google Maps in the browser otherwise. Works
+// off just an address, no geocoding needed on our side.
+function directionsUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
 
 export type GuestPortalDigitalKey = {
   code: string;
@@ -66,9 +76,30 @@ export default function GuestPortalView({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {property.building_photo_url && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={property.building_photo_url}
+          alt={property.name_address}
+          className="h-48 w-full rounded-lg border border-gray-200 object-cover"
+        />
+      )}
+
       <div>
         <h1 className="text-lg font-semibold text-gray-900">{property.name_address}</h1>
-        {property.address && <p className="text-sm text-gray-500">{property.address}</p>}
+        {property.address && (
+          <p className="text-sm text-gray-500">
+            {property.address}{" "}
+            <a
+              href={directionsUrl(property.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-gray-700 underline"
+            >
+              Get directions →
+            </a>
+          </p>
+        )}
       </div>
 
       <Section title="Your stay">
@@ -134,6 +165,12 @@ export default function GuestPortalView({
               ))}
             </ol>
           )}
+        </Section>
+      )}
+
+      {property.parking_instructions && (
+        <Section title="Parking">
+          <p className="whitespace-pre-wrap text-sm text-gray-700">{property.parking_instructions}</p>
         </Section>
       )}
 

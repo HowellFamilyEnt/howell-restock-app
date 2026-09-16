@@ -104,6 +104,7 @@ export async function updateGuestPortalInfo(propertyId: string, formData: FormDa
   const wifi_password = String(formData.get("wifi_password") ?? "").trim();
   const guest_checkin_instructions = String(formData.get("guest_checkin_instructions") ?? "").trim();
   const house_rules = String(formData.get("house_rules") ?? "").trim();
+  const parking_instructions = String(formData.get("parking_instructions") ?? "").trim();
 
   await prisma.property.update({
     where: { id: propertyId },
@@ -112,9 +113,43 @@ export async function updateGuestPortalInfo(propertyId: string, formData: FormDa
       wifi_password: wifi_password || null,
       guest_checkin_instructions: guest_checkin_instructions || null,
       house_rules: house_rules || null,
+      parking_instructions: parking_instructions || null,
     },
   });
 
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+// Single exterior/building photo shown at the top of the guest portal -
+// unlike the numbered CheckinPhoto steps below, there's only ever one of
+// these, so uploading a new one replaces rather than appends.
+export async function updateBuildingPhoto(
+  propertyId: string,
+  _prevState: string | undefined,
+  formData: FormData
+): Promise<string> {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return "Choose a photo first.";
+
+  try {
+    const uploaded = await uploadNotePhoto(file);
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: { building_photo_url: uploaded.url },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Upload failed.";
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  return "";
+}
+
+export async function removeBuildingPhoto(propertyId: string) {
+  await prisma.property.update({
+    where: { id: propertyId },
+    data: { building_photo_url: null },
+  });
   revalidatePath(`/properties/${propertyId}`);
 }
 

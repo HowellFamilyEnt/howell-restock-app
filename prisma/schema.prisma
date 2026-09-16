@@ -65,6 +65,8 @@ model Property {
   wifi_password               String?
   guest_checkin_instructions String? // building + unit access, the multi-unit-complex case
   house_rules                 String?
+  parking_instructions        String?
+  building_photo_url          String? // exterior/building photo shown at the top of the guest portal
   type                     PropertyType
   unit_count               Int
   assigned_cleaning_team   String?

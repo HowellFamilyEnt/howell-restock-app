@@ -7,6 +7,8 @@ import {
   updateMasterDoorCode,
   updateGeneralNotes,
   updateGuestPortalInfo,
+  updateBuildingPhoto,
+  removeBuildingPhoto,
   addCheckinPhoto,
   updateCheckinPhotoCaption,
   deleteCheckinPhoto,
@@ -24,6 +26,8 @@ import { activeCleaningStatuses } from "@/lib/cleaningStatus";
 import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
 import CheckinPhotoForm from "./CheckinPhotoForm";
+import BuildingPhotoForm from "./BuildingPhotoForm";
+import SaveButton from "@/components/SaveButton";
 
 const licenseStatusStyles: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
@@ -153,12 +157,7 @@ export default async function PropertyDetailPage({
             />
           </div>
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Save
-            </button>
+            <SaveButton />
           </div>
         </form>
         {property.source === "Hostaway" && (
@@ -184,12 +183,7 @@ export default async function PropertyDetailPage({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Save
-          </button>
+          <SaveButton />
         </form>
       </div>
 
@@ -258,12 +252,7 @@ export default async function PropertyDetailPage({
             placeholder="Anything the crew or office should know about this property..."
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-          <button
-            type="submit"
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Save
-          </button>
+          <SaveButton />
         </form>
       </div>
 
@@ -317,15 +306,32 @@ export default async function PropertyDetailPage({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          <div className="col-span-2 space-y-1">
+            <label className="text-sm font-medium text-gray-700">Parking details</label>
+            <textarea
+              name="parking_instructions"
+              rows={3}
+              defaultValue={property.parking_instructions ?? ""}
+              placeholder="e.g. Park in spot #4 in the lot behind the building. Street parking after 6pm is also fine."
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
           <div className="col-span-2">
-            <button
-              type="submit"
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Save
-            </button>
+            <SaveButton />
           </div>
         </form>
+
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <h3 className="mb-1 text-sm font-medium text-gray-700">Building photo</h3>
+          <p className="mb-3 text-sm text-gray-500">
+            Shown at the top of the guest portal, above &ldquo;Your stay.&rdquo;
+          </p>
+          <BuildingPhotoForm
+            currentUrl={property.building_photo_url}
+            uploadAction={updateBuildingPhoto.bind(null, property.id)}
+            removeAction={removeBuildingPhoto.bind(null, property.id)}
+          />
+        </div>
 
         <div className="mt-6 border-t border-gray-100 pt-4">
           <h3 className="mb-1 text-sm font-medium text-gray-700">Check-in photo steps</h3>
@@ -355,12 +361,7 @@ export default async function PropertyDetailPage({
                       placeholder="Caption"
                       className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
                     />
-                    <button
-                      type="submit"
-                      className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                    >
-                      Save
-                    </button>
+                    <SaveButton size="sm" />
                   </form>
                   <div className="flex shrink-0 items-center gap-1">
                     <form action={moveCheckinPhoto.bind(null, photo.id, property.id, "up")}>
@@ -453,12 +454,7 @@ export default async function PropertyDetailPage({
             />
           </div>
           <div className="flex items-end">
-            <button
-              type="submit"
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Save
-            </button>
+            <SaveButton />
           </div>
         </form>
       </div>
@@ -484,12 +480,7 @@ export default async function PropertyDetailPage({
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Save
-          </button>
+          <SaveButton />
         </form>
         <p className="mt-3 text-xs text-gray-400">
           Work order links for this property go to whoever is assigned here. Manage people on the{" "}
@@ -579,12 +570,7 @@ export default async function PropertyDetailPage({
                           defaultValue={parByItemId.get(item.id) ?? 0}
                           className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
                         />
-                        <button
-                          type="submit"
-                          className="rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                        >
-                          Save
-                        </button>
+                        <SaveButton size="sm" />
                       </form>
                     </td>
                   </tr>
