@@ -148,6 +148,7 @@ model Property {
   bookingConfirmations BookingConfirmation[]
   guestAccessCodes     GuestAccessCode[]
   checkinPhotos        CheckinPhoto[]
+  parkingPhotos        ParkingPhoto[]
   upgradeRequests      UpgradeRequest[]
 
   createdAt DateTime @default(now())
@@ -258,6 +259,10 @@ model TeamMember {
   email  String?
   phone  String?
   active Boolean @default(true)
+  // Hex color (e.g. "#2563eb") shown on the calendar for work orders
+  // assigned to this member - picked via a native <input type="color">
+  // on the Team page, so always a valid 7-char hex string once set.
+  color  String?
 
   assignedProperties Property[]
   workOrders         WorkOrder[]
@@ -374,6 +379,14 @@ model IntegrationSettings {
   supabase_project_url      String?
   supabase_service_role_key String?
   service_admin_email       String?
+  // Guest-facing "Contact us" block shown at the bottom of the guest
+  // portal (src/components/GuestPortalView.tsx) - one shared set for
+  // every property, editable from Settings rather than per-property since
+  // it's the same office/office line for everyone.
+  guest_contact_name        String?
+  guest_contact_phone       String?
+  guest_contact_email       String?
+  guest_contact_message     String?
   updatedAt                 DateTime @updatedAt
 
   @@map("integration_settings")
@@ -528,6 +541,23 @@ model CheckinPhoto {
   createdAt   DateTime @default(now())
 
   @@map("checkin_photos")
+}
+
+// Same numbered/captioned-steps shape as CheckinPhoto above, scoped to
+// parking instead of building/unit access - a separate model rather than
+// a shared `kind` column so each section's photos stay independently
+// ordered (a "Step 1" for check-in and a "Step 1" for parking aren't the
+// same step).
+model ParkingPhoto {
+  id          String   @id @default(cuid())
+  property_id String
+  property    Property @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  url         String
+  caption     String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@map("parking_photos")
 }
 
 // A guest's request for an upgrade (early check-in, late checkout, or an

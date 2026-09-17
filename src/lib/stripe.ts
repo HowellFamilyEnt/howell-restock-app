@@ -44,7 +44,20 @@ export type ChargeResult =
 // callers branch on `succeeded`.
 export async function chargeOffSession(
   secretKey: string,
-  input: { customerId: string; paymentMethodId: string; amountCents: number; description: string }
+  input: {
+    customerId: string;
+    paymentMethodId: string;
+    amountCents: number;
+    description: string;
+    // Tagged onto the PaymentIntent so this revenue can be told apart
+    // from reservation payments in Stripe's dashboard/API/exports - e.g.
+    // filtered out of whatever feed your STR accounting software (like
+    // Clearing) reads, since upgrade-request money is kept, not paid out
+    // to the property owner like a reservation charge would be. Confirm
+    // with your accounting software's support how it reads Stripe
+    // metadata (or exports) to do that filtering on their end.
+    metadata?: Record<string, string>;
+  }
 ): Promise<ChargeResult> {
   const stripe = client(secretKey);
 
@@ -57,6 +70,7 @@ export async function chargeOffSession(
       off_session: true,
       confirm: true,
       description: input.description,
+      metadata: input.metadata,
     });
     if (paymentIntent.status === "succeeded") {
       return { succeeded: true, paymentIntentId: paymentIntent.id };

@@ -3,6 +3,7 @@ import Link from "next/link";
 import ResyncButton from "./ResyncButton";
 import DeleteLockButton from "./DeleteLockButton";
 import { assignLock, toggleSeamLockActive } from "./actions";
+import PropertySearchSelect from "@/components/PropertySearchSelect";
 
 const BATTERY_STYLES: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
@@ -64,7 +65,7 @@ export default async function LocksPage({
     }),
     prisma.property.findMany({
       where: { active: true },
-      select: { id: true, name_address: true, smart_lock_id: true },
+      select: { id: true, name_address: true, address: true, smart_lock_id: true },
       orderBy: { name_address: "asc" },
     }),
   ]);
@@ -148,18 +149,15 @@ export default async function LocksPage({
                         </td>
                         <td className="px-4 py-2">
                           <form action={assignLock.bind(null, lock.device_id)} className="flex items-center gap-2">
-                            <select
-                              name="property_id"
-                              defaultValue={assigned?.id ?? ""}
-                              className="w-full min-w-[10rem] flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                            >
-                              <option value="">Unassigned</option>
-                              {properties.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name_address}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="w-full min-w-[10rem] flex-1">
+                              <PropertySearchSelect
+                                key={assigned?.id ?? "unassigned"}
+                                name="property_id"
+                                defaultValue={assigned?.id ?? ""}
+                                emptyOption="Unassigned"
+                                properties={properties.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
+                              />
+                            </div>
                             <button
                               type="submit"
                               className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
@@ -208,18 +206,15 @@ export default async function LocksPage({
                     </div>
                     <MissingBadge missingSince={lock.missing_since} />
                     <form action={assignLock.bind(null, lock.device_id)} className="mt-2 flex items-center gap-2">
-                      <select
-                        name="property_id"
-                        defaultValue={assigned?.id ?? ""}
-                        className="w-full min-w-[10rem] flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      >
-                        <option value="">Unassigned</option>
-                        {properties.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name_address}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-full min-w-[10rem] flex-1">
+                        <PropertySearchSelect
+                          key={assigned?.id ?? "unassigned"}
+                          name="property_id"
+                          defaultValue={assigned?.id ?? ""}
+                          emptyOption="Unassigned"
+                          properties={properties.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
+                        />
+                      </div>
                       <button
                         type="submit"
                         className="shrink-0 rounded-md bg-gray-100 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200"

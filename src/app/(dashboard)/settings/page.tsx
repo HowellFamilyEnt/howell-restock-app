@@ -3,6 +3,7 @@ import CredentialForm from "./CredentialForm";
 import AccessLinksSection from "./AccessLinksSection";
 import { toggleGuestAutomation } from "./actions";
 import { baseUrl } from "@/lib/workorders";
+import PropertySearchSelect from "@/components/PropertySearchSelect";
 
 const WEBHOOK_URL_PATH = "/api/webhooks/hostaway";
 
@@ -70,6 +71,42 @@ export default async function SettingsPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest contact info</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Shown in the &ldquo;Contact us&rdquo; section at the bottom of every property&apos;s guest
+          portal — one shared set for all properties, not per-property.
+        </p>
+        <CredentialForm
+          fields={[
+            {
+              name: "guest_contact_name",
+              label: "Name / label",
+              masked: settings?.guest_contact_name ?? null,
+              placeholder: "e.g. Howell Family Enterprises",
+            },
+            {
+              name: "guest_contact_phone",
+              label: "Phone",
+              masked: settings?.guest_contact_phone ?? null,
+              placeholder: "+15551234567",
+            },
+            {
+              name: "guest_contact_email",
+              label: "Email",
+              masked: settings?.guest_contact_email ?? null,
+              placeholder: "help@yourcompany.com",
+            },
+            {
+              name: "guest_contact_message",
+              label: "Message (optional)",
+              masked: settings?.guest_contact_message ?? null,
+              placeholder: "e.g. Call or text us anytime during your stay.",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Preview guest portal</h2>
         <p className="mb-4 text-sm text-gray-500">
           See (and test) what a guest sees for any property — placeholder dates, no real reservation
@@ -78,18 +115,12 @@ export default async function SettingsPage() {
         <form action="/guest-preview" target="_blank" className="flex items-end gap-3">
           <div className="flex-1 space-y-1">
             <label className="text-sm font-medium text-gray-700">Property</label>
-            <select
+            <PropertySearchSelect
               name="propertyId"
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">Select a property...</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name_address}
-                </option>
-              ))}
-            </select>
+              placeholder="Select a property..."
+              properties={properties.map((p) => ({ id: p.id, label: p.name_address }))}
+            />
           </div>
           <button
             type="submit"

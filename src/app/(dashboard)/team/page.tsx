@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { createTeamMember, toggleTeamMemberActive } from "./actions";
+import { createTeamMember, toggleTeamMemberActive, updateTeamMemberColor } from "./actions";
 import DeleteMemberButton from "./DeleteMemberButton";
+import SaveButton from "@/components/SaveButton";
 
 export default async function TeamPage() {
   const members = await prisma.teamMember.findMany({ orderBy: { name: "asc" } });
@@ -10,7 +11,8 @@ export default async function TeamPage() {
       <div>
         <h1 className="text-lg font-semibold text-gray-900">Team</h1>
         <p className="text-sm text-gray-500">
-          {members.length} total — assign members to properties to route work order links to them.
+          {members.length} total — assign members to properties to route work order links to them. Each
+          member&apos;s color shows on their work orders on the Calendar page.
         </p>
       </div>
 
@@ -21,6 +23,7 @@ export default async function TeamPage() {
               <th className="px-4 py-2">Name</th>
               <th className="px-4 py-2">Email</th>
               <th className="px-4 py-2">Phone</th>
+              <th className="px-4 py-2">Calendar color</th>
               <th className="px-4 py-2">Active</th>
               <th className="px-4 py-2"></th>
             </tr>
@@ -31,6 +34,17 @@ export default async function TeamPage() {
                 <td className="px-4 py-2 font-medium text-gray-900">{member.name}</td>
                 <td className="px-4 py-2 text-gray-600">{member.email ?? "—"}</td>
                 <td className="px-4 py-2 text-gray-600">{member.phone ?? "—"}</td>
+                <td className="px-4 py-2">
+                  <form action={updateTeamMemberColor.bind(null, member.id)} className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      name="color"
+                      defaultValue={member.color ?? "#6b7280"}
+                      className="h-8 w-10 cursor-pointer rounded border border-gray-300 p-0.5"
+                    />
+                    <SaveButton size="sm" />
+                  </form>
+                </td>
                 <td className="px-4 py-2">
                   <form action={toggleTeamMemberActive.bind(null, member.id, !member.active)}>
                     <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
@@ -45,7 +59,7 @@ export default async function TeamPage() {
             ))}
             {members.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   No team members yet — add one below.
                 </td>
               </tr>
@@ -61,13 +75,28 @@ export default async function TeamPage() {
             className={`rounded-lg border border-gray-200 bg-white p-4 ${member.active ? "" : "opacity-50"}`}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="font-medium text-gray-900">{member.name}</span>
+              <span className="flex items-center gap-2 font-medium text-gray-900">
+                <span
+                  className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
+                  style={{ backgroundColor: member.color ?? "#6b7280" }}
+                />
+                {member.name}
+              </span>
               <DeleteMemberButton memberId={member.id} />
             </div>
             <div className="mt-1 space-y-0.5 text-sm text-gray-600">
               {member.email && <p>{member.email}</p>}
               {member.phone && <p>{member.phone}</p>}
             </div>
+            <form action={updateTeamMemberColor.bind(null, member.id)} className="mt-2 flex items-center gap-2">
+              <input
+                type="color"
+                name="color"
+                defaultValue={member.color ?? "#6b7280"}
+                className="h-8 w-10 cursor-pointer rounded border border-gray-300 p-0.5"
+              />
+              <SaveButton size="sm" />
+            </form>
             <form action={toggleTeamMemberActive.bind(null, member.id, !member.active)} className="mt-2">
               <button type="submit" className="text-xs text-gray-500 hover:text-gray-900">
                 {member.active ? "Active" : "Inactive"}

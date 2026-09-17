@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useEffect, useState } from "react";
+import PropertySearchSelect from "@/components/PropertySearchSelect";
 
 type Property = { id: string; label: string; status: "not_ready" | "ready" | "occupied" };
 
@@ -56,18 +57,11 @@ export default function CleaningPageForm({
     <div className="space-y-4">
       <div className="space-y-1">
         <label className="text-sm font-medium text-gray-700">Property</label>
-        <select
-          value={propertyId}
-          onChange={(e) => setPropertyId(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="">Select a property...</option>
-          {properties.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <PropertySearchSelect
+          onSelect={setPropertyId}
+          placeholder="Select a property..."
+          properties={properties.map((p) => ({ id: p.id, label: p.label }))}
+        />
       </div>
 
       <form

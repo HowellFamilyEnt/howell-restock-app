@@ -3,6 +3,7 @@ import Link from "next/link";
 import SweepButton from "./SweepButton";
 import WorkOrdersTable from "./WorkOrdersTable";
 import { createWorkOrderForPropertyAction } from "./actions";
+import PropertySearchSelect from "@/components/PropertySearchSelect";
 
 const TABS = [
   { key: "active", label: "Open + Completed" },
@@ -98,17 +99,11 @@ export default async function WorkOrdersPage({
         <form action={createWorkOrderForPropertyAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-1">
             <label className="text-sm font-medium text-gray-700">Property</label>
-            <select
+            <PropertySearchSelect
               name="property_id"
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name_address}
-                </option>
-              ))}
-            </select>
+              properties={properties.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Due date (optional)</label>

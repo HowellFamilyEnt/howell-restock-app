@@ -27,14 +27,25 @@ export default async function GuestPortalPage({
   if (!confirmation || !confirmation.property) notFound();
   const property = confirmation.property;
 
-  const [guestAccessCode, checkinPhotos, stripePublishableKey, guestAutomationEnabled] = await Promise.all([
-    prisma.guestAccessCode.findUnique({
-      where: { hostaway_reservation_id: confirmation.hostaway_reservation_id },
-    }),
-    prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
-    getStripePublishableKey(),
-    getGuestAutomationEnabled(),
-  ]);
+  const [guestAccessCode, checkinPhotos, parkingPhotos, contactSettings, stripePublishableKey, guestAutomationEnabled] =
+    await Promise.all([
+      prisma.guestAccessCode.findUnique({
+        where: { hostaway_reservation_id: confirmation.hostaway_reservation_id },
+      }),
+      prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+      prisma.parkingPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+      prisma.integrationSettings.findUnique({
+        where: { id: "hostaway" },
+        select: {
+          guest_contact_name: true,
+          guest_contact_phone: true,
+          guest_contact_email: true,
+          guest_contact_message: true,
+        },
+      }),
+      getStripePublishableKey(),
+      getGuestAutomationEnabled(),
+    ]);
 
   // Upgrades (SuiteOp roadmap P4) - same guest-automation gate as
   // everything else guest-facing, plus a real Stripe key to actually
@@ -55,6 +66,17 @@ export default async function GuestPortalPage({
             : null
         }
         checkinPhotos={checkinPhotos}
+        parkingPhotos={parkingPhotos}
+        contact={
+          contactSettings
+            ? {
+                name: contactSettings.guest_contact_name,
+                phone: contactSettings.guest_contact_phone,
+                email: contactSettings.guest_contact_email,
+                message: contactSettings.guest_contact_message,
+              }
+            : null
+        }
         backupCodeSlot={<BackupCodeButton token={token} />}
         upgradesSection={
           upgradesAvailable ? (

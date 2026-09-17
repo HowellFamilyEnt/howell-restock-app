@@ -36,8 +36,16 @@ export default async function CalendarPage({
     prisma.workOrder.findMany({
       where: { status: "Open", scheduled_for: { not: null } },
       orderBy: { scheduled_for: "asc" },
+      include: { assignedTeamMember: { select: { name: true, color: true } } },
     }),
   ]);
+
+  const assignedColors = new Map<string, string>();
+  for (const wo of openWorkOrders) {
+    if (wo.assignedTeamMember?.color && !assignedColors.has(wo.assignedTeamMember.name)) {
+      assignedColors.set(wo.assignedTeamMember.name, wo.assignedTeamMember.color);
+    }
+  }
 
   const workOrderByProperty = new Map<string, (typeof openWorkOrders)[number]>();
   for (const wo of openWorkOrders) {
@@ -49,6 +57,8 @@ export default async function CalendarPage({
     name_address: string;
     urgent_restock_requested: boolean;
     href: string;
+    assignedColor: string | null;
+    assignedName: string | null;
   };
   const scheduledByDay = new Map<number, CalendarEntry[]>();
   const notScheduled: typeof properties = [];
@@ -68,6 +78,8 @@ export default async function CalendarPage({
           name_address: property.name_address,
           urgent_restock_requested: property.urgent_restock_requested,
           href: `/work-orders/${workOrder.id}`,
+          assignedColor: workOrder.assignedTeamMember?.color ?? null,
+          assignedName: workOrder.assignedTeamMember?.name ?? null,
         };
         const existing = scheduledByDay.get(day);
         if (existing) existing.push(entry);
@@ -90,6 +102,8 @@ export default async function CalendarPage({
         name_address: property.name_address,
         urgent_restock_requested: property.urgent_restock_requested,
         href: `/properties/${property.id}`,
+        assignedColor: null,
+        assignedName: null,
       };
       const existing = scheduledByDay.get(day);
       if (existing) existing.push(entry);
@@ -184,7 +198,8 @@ export default async function CalendarPage({
                               ? "bg-red-100 text-red-700"
                               : "bg-gray-100 text-gray-700"
                           }`}
-                          title={entry.name_address}
+                          style={entry.assignedColor ? { borderLeft: `3px solid ${entry.assignedColor}` } : undefined}
+                          title={entry.assignedName ? `${entry.name_address} — ${entry.assignedName}` : entry.name_address}
                         >
                           {entry.name_address}
                         </Link>
@@ -197,6 +212,17 @@ export default async function CalendarPage({
           })}
         </div>
       </div>
+
+      {assignedColors.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+          {Array.from(assignedColors.entries()).map(([name, color]) => (
+            <span key={name} className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {notScheduled.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-4">

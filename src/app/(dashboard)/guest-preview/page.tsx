@@ -29,12 +29,22 @@ export default async function GuestPreviewPage({
   const property = await prisma.property.findUnique({ where: { id: propertyId } });
   if (!property) notFound();
 
-  const [recentGuestCode, checkinPhotos] = await Promise.all([
+  const [recentGuestCode, checkinPhotos, parkingPhotos, contactSettings] = await Promise.all([
     prisma.guestAccessCode.findFirst({
       where: { property_id: property.id, purpose: "guest", code: { not: null } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+    prisma.parkingPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+    prisma.integrationSettings.findUnique({
+      where: { id: "hostaway" },
+      select: {
+        guest_contact_name: true,
+        guest_contact_phone: true,
+        guest_contact_email: true,
+        guest_contact_message: true,
+      },
+    }),
   ]);
 
   const today = new Date();
@@ -65,6 +75,17 @@ export default async function GuestPreviewPage({
             : null
         }
         checkinPhotos={checkinPhotos}
+        parkingPhotos={parkingPhotos}
+        contact={
+          contactSettings
+            ? {
+                name: contactSettings.guest_contact_name,
+                phone: contactSettings.guest_contact_phone,
+                email: contactSettings.guest_contact_email,
+                message: contactSettings.guest_contact_message,
+              }
+            : null
+        }
       />
     </div>
   );

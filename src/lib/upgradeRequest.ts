@@ -185,6 +185,17 @@ export async function decideUpgradeRequest(
     paymentMethodId: request.stripe_payment_method_id,
     amountCents: request.price_cents,
     description: `${request.property.name_address} — ${request.tier_label}`,
+    // Lets this charge be told apart from reservation payments in
+    // Stripe's dashboard/API/exports - this is upsell revenue kept by
+    // the business, never paid out to the property owner.
+    metadata: {
+      source: "hfe_upgrade_request",
+      category: request.category,
+      property_id: request.property_id,
+      property_name: request.property.name_address,
+      hostaway_reservation_id: request.hostaway_reservation_id,
+      upgrade_request_id: request.id,
+    },
   });
 
   if (!charge.succeeded) {

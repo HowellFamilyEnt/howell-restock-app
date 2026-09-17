@@ -222,6 +222,71 @@ export async function moveCheckinPhoto(photoId: string, propertyId: string, dire
   revalidatePath(`/properties/${propertyId}`);
 }
 
+// Same numbered/captioned-steps pattern as the check-in photos above,
+// scoped to the guest portal's Parking section instead.
+export async function addParkingPhoto(
+  propertyId: string,
+  _prevState: string | undefined,
+  formData: FormData
+): Promise<string> {
+  const caption = String(formData.get("caption") ?? "").trim();
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return "Choose a photo first.";
+
+  try {
+    const uploaded = await uploadNotePhoto(file);
+    const highest = await prisma.parkingPhoto.aggregate({
+      where: { property_id: propertyId },
+      _max: { order: true },
+    });
+    await prisma.parkingPhoto.create({
+      data: {
+        property_id: propertyId,
+        url: uploaded.url,
+        caption: caption || null,
+        order: (highest._max.order ?? -1) + 1,
+      },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Upload failed.";
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  return "";
+}
+
+export async function updateParkingPhotoCaption(photoId: string, propertyId: string, formData: FormData) {
+  const caption = String(formData.get("caption") ?? "").trim();
+  await prisma.parkingPhoto.update({ where: { id: photoId }, data: { caption: caption || null } });
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function deleteParkingPhoto(photoId: string, propertyId: string) {
+  await prisma.parkingPhoto.delete({ where: { id: photoId } });
+  revalidatePath(`/properties/${propertyId}`);
+}
+
+export async function moveParkingPhoto(photoId: string, propertyId: string, direction: "up" | "down") {
+  const photos = await prisma.parkingPhoto.findMany({
+    where: { property_id: propertyId },
+    orderBy: { order: "asc" },
+  });
+  const index = photos.findIndex((p) => p.id === photoId);
+  if (index === -1) return;
+
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= photos.length) return;
+
+  const current = photos[index];
+  const swapWith = photos[swapIndex];
+  await prisma.$transaction([
+    prisma.parkingPhoto.update({ where: { id: current.id }, data: { order: swapWith.order } }),
+    prisma.parkingPhoto.update({ where: { id: swapWith.id }, data: { order: current.order } }),
+  ]);
+
+  revalidatePath(`/properties/${propertyId}`);
+}
+
 export async function updateAssignedTeamMember(propertyId: string, formData: FormData) {
   const teamMemberId = String(formData.get("assignedTeamMemberId") ?? "").trim();
 

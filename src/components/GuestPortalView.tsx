@@ -41,6 +41,13 @@ export type GuestPortalCheckinPhoto = {
   caption: string | null;
 };
 
+export type GuestPortalContact = {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  message: string | null;
+};
+
 // The actual guest-facing layout - shared by the real portal
 // (src/app/guest/[token]/page.tsx) and the admin preview
 // (src/app/(dashboard)/guest-preview/page.tsx), so the two can never drift
@@ -55,6 +62,8 @@ export default function GuestPortalView({
   checkOutHour,
   digitalKey,
   checkinPhotos,
+  parkingPhotos,
+  contact,
   backupCodeSlot,
   upgradesSection,
 }: {
@@ -65,6 +74,8 @@ export default function GuestPortalView({
   checkOutHour: number | null | undefined;
   digitalKey: GuestPortalDigitalKey | null;
   checkinPhotos: GuestPortalCheckinPhoto[];
+  parkingPhotos: GuestPortalCheckinPhoto[];
+  contact: GuestPortalContact | null;
   backupCodeSlot?: React.ReactNode;
   // Upgrade-request forms (SuiteOp roadmap P4) - only ever passed by the
   // real guest portal, never /guest-preview, which must not be able to
@@ -121,7 +132,7 @@ export default function GuestPortalView({
         </div>
       </Section>
 
-      <Section title="Getting in">
+      <Section title="Door Code">
         {digitalKey ? (
           <div>
             <p className="text-2xl font-semibold tracking-wide text-gray-900">{digitalKey.code}</p>
@@ -168,9 +179,31 @@ export default function GuestPortalView({
         </Section>
       )}
 
-      {property.parking_instructions && (
+      {(property.parking_instructions || parkingPhotos.length > 0) && (
         <Section title="Parking">
-          <p className="whitespace-pre-wrap text-sm text-gray-700">{property.parking_instructions}</p>
+          {property.parking_instructions && (
+            <p className="whitespace-pre-wrap text-sm text-gray-700">{property.parking_instructions}</p>
+          )}
+          {parkingPhotos.length > 0 && (
+            <ol className={`space-y-4 ${property.parking_instructions ? "mt-4" : ""}`}>
+              {parkingPhotos.map((photo, index) => (
+                <li key={photo.id} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-medium text-white">
+                    {index + 1}
+                  </span>
+                  <div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.url}
+                      alt={photo.caption ?? `Step ${index + 1}`}
+                      className="max-w-xs rounded-lg border border-gray-200"
+                    />
+                    {photo.caption && <p className="mt-1 text-sm text-gray-700">{photo.caption}</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
         </Section>
       )}
 
@@ -198,6 +231,29 @@ export default function GuestPortalView({
       )}
 
       {upgradesSection}
+
+      {contact && (contact.name || contact.phone || contact.email || contact.message) && (
+        <Section title="Contact us">
+          <div className="space-y-1 text-sm text-gray-700">
+            {contact.name && <p className="font-medium text-gray-900">{contact.name}</p>}
+            {contact.phone && (
+              <p>
+                <a href={`tel:${contact.phone}`} className="text-gray-700 underline">
+                  {contact.phone}
+                </a>
+              </p>
+            )}
+            {contact.email && (
+              <p>
+                <a href={`mailto:${contact.email}`} className="text-gray-700 underline">
+                  {contact.email}
+                </a>
+              </p>
+            )}
+            {contact.message && <p className="whitespace-pre-wrap text-gray-600">{contact.message}</p>}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

@@ -13,6 +13,10 @@ import {
   updateCheckinPhotoCaption,
   deleteCheckinPhoto,
   moveCheckinPhoto,
+  addParkingPhoto,
+  updateParkingPhotoCaption,
+  deleteParkingPhoto,
+  moveParkingPhoto,
   updateAssignedTeamMember,
   updateLicenseInfo,
   toggleGuestAutomationForProperty,
@@ -72,7 +76,7 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const [items, teamMembers, workOrders, checkinPhotos] = await Promise.all([
+  const [items, teamMembers, workOrders, checkinPhotos, parkingPhotos] = await Promise.all([
     prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.workOrder.findMany({
@@ -82,6 +86,7 @@ export default async function PropertyDetailPage({
       include: { assignedTeamMember: true },
     }),
     prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+    prisma.parkingPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
   ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
@@ -397,6 +402,71 @@ export default async function PropertyDetailPage({
           )}
 
           <CheckinPhotoForm action={addCheckinPhoto.bind(null, property.id)} />
+        </div>
+
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <h3 className="mb-1 text-sm font-medium text-gray-700">Parking photos</h3>
+          <p className="mb-3 text-sm text-gray-500">
+            A numbered, captioned walkthrough shown under Parking on the guest portal — e.g. a photo of
+            the lot with &ldquo;Park in any spot marked Guest.&rdquo;
+          </p>
+
+          {parkingPhotos.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {parkingPhotos.map((photo, index) => (
+                <div key={photo.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-2">
+                  <span className="w-5 shrink-0 text-center text-sm font-medium text-gray-400">{index + 1}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={photo.caption ?? `Step ${index + 1}`}
+                    className="h-14 w-14 shrink-0 rounded-md border border-gray-200 object-cover"
+                  />
+                  <form
+                    action={updateParkingPhotoCaption.bind(null, photo.id, property.id)}
+                    className="flex flex-1 items-center gap-2"
+                  >
+                    <input
+                      name="caption"
+                      defaultValue={photo.caption ?? ""}
+                      placeholder="Caption"
+                      className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    />
+                    <SaveButton size="sm" />
+                  </form>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <form action={moveParkingPhoto.bind(null, photo.id, property.id, "up")}>
+                      <button
+                        type="submit"
+                        disabled={index === 0}
+                        className="rounded-md px-1.5 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Move up"
+                      >
+                        ↑
+                      </button>
+                    </form>
+                    <form action={moveParkingPhoto.bind(null, photo.id, property.id, "down")}>
+                      <button
+                        type="submit"
+                        disabled={index === parkingPhotos.length - 1}
+                        className="rounded-md px-1.5 py-1 text-xs text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                        aria-label="Move down"
+                      >
+                        ↓
+                      </button>
+                    </form>
+                    <form action={deleteParkingPhoto.bind(null, photo.id, property.id)}>
+                      <button type="submit" className="rounded-md px-1.5 py-1 text-xs text-red-600 hover:bg-red-50">
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <CheckinPhotoForm action={addParkingPhoto.bind(null, property.id)} />
         </div>
       </div>
 
