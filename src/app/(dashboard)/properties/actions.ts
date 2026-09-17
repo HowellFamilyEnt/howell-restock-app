@@ -69,6 +69,23 @@ export async function togglePropertyActive(propertyId: string, next: boolean) {
   revalidatePath("/properties");
 }
 
+// Mass on/off for the per-property guest-automation switch - the
+// Properties page only ever shows the UI to call this when the master
+// switch (IntegrationSettings.guest_automation_enabled) is already on,
+// but this doesn't re-check that itself: the master switch is checked at
+// send-time everywhere guest-facing (sendBookingConfirmation,
+// provisionGuestAccessCode), so a stale/bypassed call here can never
+// actually reach a guest on its own.
+export async function bulkSetGuestAutomation(propertyIds: string[], enabled: boolean) {
+  if (propertyIds.length === 0) return;
+  await prisma.property.updateMany({
+    where: { id: { in: propertyIds } },
+    data: { guest_automation_enabled: enabled },
+  });
+  revalidatePath("/properties");
+  revalidatePath("/properties/[id]", "page");
+}
+
 export async function runHostawaySync(
   _prevState: string | undefined,
   _formData: FormData

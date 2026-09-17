@@ -5,6 +5,21 @@ import HostawaySyncButton from "./HostawaySyncButton";
 import CreatableGroupSelect from "@/components/CreatableGroupSelect";
 import PropertyStatusBadge from "./PropertyStatusBadge";
 import { activeCleaningStatuses, type CleaningStatus } from "@/lib/cleaningStatus";
+import { getGuestAutomationEnabled } from "@/lib/settings";
+import { GuestAutomationProvider, PropertyAutomationCheckbox } from "@/components/GuestAutomationBulk";
+import ExpandCollapseControls from "@/components/ExpandCollapseControls";
+
+function GuestAutomationBadge({ enabled }: { enabled: boolean }) {
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+        enabled ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+      }`}
+    >
+      {enabled ? "On" : "Off"}
+    </span>
+  );
+}
 
 const CLEANING_STATUS_STYLES: Record<CleaningStatus, string> = {
   not_ready: "bg-red-100 text-red-700",
@@ -28,12 +43,13 @@ export default async function PropertiesPage({
   const { show } = await searchParams;
   const showInactive = show === "all";
 
-  const [properties, cleaningStatuses] = await Promise.all([
+  const [properties, cleaningStatuses, guestAutomationEnabled] = await Promise.all([
     prisma.property.findMany({
       where: showInactive ? {} : { active: true },
       orderBy: { name_address: "asc" },
     }),
     activeCleaningStatuses(),
+    getGuestAutomationEnabled(),
   ]);
 
   const allAreas = Array.from(
@@ -60,6 +76,7 @@ export default async function PropertiesPage({
           <p className="text-sm text-gray-500">{properties.length} total</p>
         </div>
         <div className="flex items-center gap-3">
+          <ExpandCollapseControls containerId="property-area-groups" />
           <Link
             href={showInactive ? "/properties" : "/properties?show=all"}
             className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
@@ -76,6 +93,8 @@ export default async function PropertiesPage({
         </p>
       )}
 
+      <GuestAutomationProvider>
+      <div id="property-area-groups" className="space-y-8">
       {groupKeys.map((area) => {
         const groupProperties = groups.get(area)!;
         return (
@@ -88,11 +107,13 @@ export default async function PropertiesPage({
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                   <tr>
+                    {guestAutomationEnabled && <th className="px-4 py-2"></th>}
                     <th className="px-4 py-2">Property</th>
                     <th className="px-4 py-2">Address</th>
                     <th className="px-4 py-2">Beds/Baths</th>
                     <th className="px-4 py-2">Area</th>
                     <th className="px-4 py-2">Cleaning</th>
+                    <th className="px-4 py-2">Guest Automation</th>
                     <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2"></th>
                   </tr>
@@ -100,6 +121,11 @@ export default async function PropertiesPage({
                 <tbody className="divide-y divide-gray-100">
                   {groupProperties.map((property) => (
                     <tr key={property.id} className={property.active ? "" : "opacity-50"}>
+                      {guestAutomationEnabled && (
+                        <td className="px-4 py-2">
+                          <PropertyAutomationCheckbox propertyId={property.id} />
+                        </td>
+                      )}
                       <td className="px-4 py-2 font-medium text-gray-900">
                         <Link href={`/properties/${property.id}`} target="_blank" className="hover:underline">
                           {property.name_address}
@@ -145,6 +171,9 @@ export default async function PropertiesPage({
                         })()}
                       </td>
                       <td className="px-4 py-2">
+                        <GuestAutomationBadge enabled={property.guest_automation_enabled} />
+                      </td>
+                      <td className="px-4 py-2">
                         <PropertyStatusBadge
                           propertyName={property.name_address}
                           isHostaway={property.source === "Hostaway"}
@@ -175,9 +204,12 @@ export default async function PropertiesPage({
                   className={`rounded-lg border border-gray-200 bg-white p-4 ${property.active ? "" : "opacity-50"}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Link href={`/properties/${property.id}`} target="_blank" className="font-medium text-gray-900 hover:underline">
-                      {property.name_address}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {guestAutomationEnabled && <PropertyAutomationCheckbox propertyId={property.id} />}
+                      <Link href={`/properties/${property.id}`} target="_blank" className="font-medium text-gray-900 hover:underline">
+                        {property.name_address}
+                      </Link>
+                    </div>
                     <PropertyStatusBadge
                       propertyName={property.name_address}
                       isHostaway={property.source === "Hostaway"}
@@ -201,6 +233,7 @@ export default async function PropertiesPage({
                         </span>
                       );
                     })()}
+                    <GuestAutomationBadge enabled={property.guest_automation_enabled} />
                   </div>
                   <form
                     action={updateArea.bind(null, property.id)}
@@ -236,6 +269,8 @@ export default async function PropertiesPage({
           </details>
         );
       })}
+      </div>
+      </GuestAutomationProvider>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-4 text-sm font-semibold text-gray-900">Add a property</h2>
