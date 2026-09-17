@@ -20,19 +20,20 @@ export default async function WorkOrderDetailPage({
 }) {
   const { id } = await params;
 
-  const workOrder = await prisma.workOrder.findUnique({
-    where: { id },
-    include: {
-      property: true,
-      assignedTeamMember: true,
-      items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
-      notes: { include: { photos: true }, orderBy: { createdAt: "desc" } },
-    },
-  });
+  const [workOrder, teamMembers] = await Promise.all([
+    prisma.workOrder.findUnique({
+      where: { id },
+      include: {
+        property: true,
+        assignedTeamMember: true,
+        items: { include: { item: true }, orderBy: { item: { name: "asc" } } },
+        notes: { include: { photos: true }, orderBy: { createdAt: "desc" } },
+      },
+    }),
+    prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+  ]);
 
   if (!workOrder) notFound();
-
-  const teamMembers = await prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } });
   const link = workOrderLink(workOrder.share_token);
   const itemsByRoom = groupByRoom(workOrder.items, (woItem) => woItem.item.room_groups);
 

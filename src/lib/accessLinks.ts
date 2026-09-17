@@ -12,6 +12,11 @@ export const ACCESS_SECTIONS = [
   { key: "workorders", label: "Work Orders", path: "/work-orders" },
   { key: "team", label: "Team", path: "/team" },
   { key: "licenses", label: "Licenses", path: "/licenses" },
+  { key: "listings", label: "New Listing", path: "/listings" },
+  { key: "templates", label: "Templates", path: "/templates" },
+  { key: "bookingconfirmations", label: "Booking Confirmations", path: "/booking-confirmations" },
+  { key: "guestaccesscodes", label: "Guest Access Codes", path: "/guest-access-codes" },
+  { key: "locks", label: "Locks", path: "/locks" },
 ] as const;
 
 export type SectionKey = (typeof ACCESS_SECTIONS)[number]["key"];

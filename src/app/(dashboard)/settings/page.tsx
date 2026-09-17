@@ -14,13 +14,15 @@ function mask(value: string | null | undefined): string | null {
 }
 
 export default async function SettingsPage() {
-  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
-  const accessLinks = await prisma.accessLink.findMany({ orderBy: { createdAt: "desc" } });
-  const properties = await prisma.property.findMany({
-    where: { active: true },
-    select: { id: true, name_address: true },
-    orderBy: { name_address: "asc" },
-  });
+  const [settings, accessLinks, properties] = await Promise.all([
+    prisma.integrationSettings.findUnique({ where: { id: "hostaway" } }),
+    prisma.accessLink.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.property.findMany({
+      where: { active: true },
+      select: { id: true, name_address: true },
+      orderBy: { name_address: "asc" },
+    }),
+  ]);
 
   const hostawayEnvConfigured = Boolean(process.env.HOSTAWAY_ACCOUNT_ID && process.env.HOSTAWAY_API_KEY);
   const emailEnvConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);

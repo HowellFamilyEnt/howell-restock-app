@@ -57,6 +57,18 @@ function candidateDates(target: Date): Date[] {
   return offsets.map((o) => addUtcDays(target, o)).filter((d) => !isSunday(d));
 }
 
+// Short-lived in-memory cache, keyed by the target day (not exact
+// timestamp - the lookback/lookahead window only meaningfully changes
+// day to day anyway). Occupancy status doesn't need per-request
+// freshness: a stay's arrival/departure dates don't shift minute to
+// minute, so re-fetching ~8,500 reservations from Hostaway on every
+// single page load (this is called by activeCleaningStatuses(), used on
+// the Properties list, Property detail, and Cleaning pages) was pure
+// waste. A few minutes of staleness is a non-issue in exchange for not
+// hitting Hostaway on every navigation.
+const reservationsCache = new Map<string, { data: HostawayReservation[]; expiresAt: number }>();
+const RESERVATIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+
 // Fetches every reservation (across the whole account) arriving within
 // ARRIVAL_LOOKBACK_DAYS..ARRIVAL_LOOKAHEAD_DAYS of targetDate. Meant to be
 // called ONCE per batch of scheduling decisions that share a target date
@@ -67,6 +79,12 @@ function candidateDates(target: Date): Date[] {
 // missing credentials, network error, or an unexpected response shape -
 // so a Hostaway hiccup never blocks work order creation.
 export async function fetchReservationsNear(targetDate: Date): Promise<HostawayReservation[]> {
+  const cacheKey = isoDate(targetDate);
+  const cached = reservationsCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
   const credentials = await getHostawayCredentials();
   if (!credentials) return [];
 
@@ -74,7 +92,9 @@ export async function fetchReservationsNear(targetDate: Date): Promise<HostawayR
     const token = await getAccessToken(credentials.accountId, credentials.apiKey);
     const start = isoDate(addUtcDays(targetDate, -ARRIVAL_LOOKBACK_DAYS));
     const end = isoDate(addUtcDays(targetDate, ARRIVAL_LOOKAHEAD_DAYS));
-    return await fetchReservationsByArrivalWindow(token, start, end);
+    const reservations = await fetchReservationsByArrivalWindow(token, start, end);
+    reservationsCache.set(cacheKey, { data: reservations, expiresAt: Date.now() + RESERVATIONS_CACHE_TTL_MS });
+    return reservations;
   } catch {
     return [];
   }

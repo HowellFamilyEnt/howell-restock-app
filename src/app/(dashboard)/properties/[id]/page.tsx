@@ -76,27 +76,26 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const [items, teamMembers, workOrders, checkinPhotos, parkingPhotos] = await Promise.all([
-    prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
-    prisma.workOrder.findMany({
-      where: { property_id: property.id },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { assignedTeamMember: true },
-    }),
-    prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
-    prisma.parkingPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
-  ]);
+  const [items, teamMembers, workOrders, checkinPhotos, parkingPhotos, assignedLock, cleaningStatuses] =
+    await Promise.all([
+      prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+      prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+      prisma.workOrder.findMany({
+        where: { property_id: property.id },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { assignedTeamMember: true },
+      }),
+      prisma.checkinPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+      prisma.parkingPhoto.findMany({ where: { property_id: property.id }, orderBy: { order: "asc" } }),
+      property.smart_lock_id
+        ? prisma.seamLock.findUnique({ where: { device_id: property.smart_lock_id } })
+        : Promise.resolve(null),
+      activeCleaningStatuses(),
+    ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
   const licenseStatus = computeLicenseStatus(property.license_expiration_date);
-
-  const assignedLock = property.smart_lock_id
-    ? await prisma.seamLock.findUnique({ where: { device_id: property.smart_lock_id } })
-    : null;
-
-  const cleaningStatuses = await activeCleaningStatuses();
   const cleaningStatus = cleaningStatuses.get(property.id) ?? "ready";
 
   return (

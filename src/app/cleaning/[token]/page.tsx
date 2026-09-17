@@ -25,15 +25,16 @@ export default async function CleaningPage({
   const link = await prisma.accessLink.findUnique({ where: { token } });
   if (!link || !link.active || !link.cleaning_enabled) notFound();
 
-  const properties = await prisma.property.findMany({ where: { active: true } });
+  const [properties, statuses] = await Promise.all([
+    prisma.property.findMany({ where: { active: true } }),
+    activeCleaningStatuses(),
+  ]);
   const sorted = [...properties].sort((a, b) => {
     const ka = addressSortKey(a);
     const kb = addressSortKey(b);
     if (ka.streetName !== kb.streetName) return ka.streetName.localeCompare(kb.streetName);
     return ka.houseNumber - kb.houseNumber;
   });
-
-  const statuses = await activeCleaningStatuses();
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-8">

@@ -55,7 +55,25 @@ type MappedListing = {
   houseRules: string | null;
 };
 
+// In-memory cache, keyed by accountId - confirmed live 2026-09-17 that
+// Hostaway tokens are valid for 63,158,400 seconds (~730 days), so
+// there's no real staleness risk in reusing one for as long as this
+// server process stays warm. Without this, every call was paying a full
+// token-request round trip PLUS a mandatory 1s sleep (see below) on every
+// single invocation - and getAccessToken is called from several
+// frequently-loaded pages (Properties, Property detail, Cleaning) via
+// activeCleaningStatuses(), so that 1s+ tax was landing on nearly every
+// navigation. A cold serverless instance still pays it once; a warm one
+// (the common case for back-to-back page loads) now doesn't.
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+const TOKEN_SAFETY_MARGIN_MS = 24 * 60 * 60 * 1000; // refresh a day before real expiry, never cut it close
+
 export async function getAccessToken(accountId: string, apiKey: string): Promise<string> {
+  const cached = tokenCache.get(accountId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.token;
+  }
+
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: {
@@ -74,10 +92,18 @@ export async function getAccessToken(accountId: string, apiKey: string): Promise
     throw new Error(`Hostaway token request failed: ${res.status} ${res.statusText}`);
   }
 
-  const data = (await res.json()) as { access_token: string };
+  const data = (await res.json()) as { access_token: string; expires_in?: number };
 
-  // Hostaway requires waiting >=1s before a freshly issued token is used.
+  // Hostaway requires waiting >=1s before a freshly issued token is used -
+  // only actually needed right after issuing a new one, never for a
+  // cached/reused token (the early return above skips this entirely).
   await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  const expiresInMs = (data.expires_in ?? 3600) * 1000;
+  tokenCache.set(accountId, {
+    token: data.access_token,
+    expiresAt: Date.now() + Math.max(expiresInMs - TOKEN_SAFETY_MARGIN_MS, 60_000),
+  });
 
   return data.access_token;
 }

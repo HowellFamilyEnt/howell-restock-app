@@ -28,10 +28,13 @@ export default async function PropertiesPage({
   const { show } = await searchParams;
   const showInactive = show === "all";
 
-  const properties = await prisma.property.findMany({
-    where: showInactive ? {} : { active: true },
-    orderBy: { name_address: "asc" },
-  });
+  const [properties, cleaningStatuses] = await Promise.all([
+    prisma.property.findMany({
+      where: showInactive ? {} : { active: true },
+      orderBy: { name_address: "asc" },
+    }),
+    activeCleaningStatuses(),
+  ]);
 
   const allAreas = Array.from(
     new Set(properties.map((p) => p.area).filter((a): a is string => !!a))
@@ -48,8 +51,6 @@ export default async function PropertiesPage({
     if (b === AREA_UNASSIGNED) return -1;
     return a.localeCompare(b);
   });
-
-  const cleaningStatuses = await activeCleaningStatuses();
 
   return (
     <div className="space-y-8">
