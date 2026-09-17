@@ -24,6 +24,10 @@ export default auth((req) => {
   // linked from Slack - same token-is-the-access-control shape (see
   // src/app/upgrade-review/[token]/page.tsx).
   const isUpgradeReviewRoute = req.nextUrl.pathname.startsWith("/upgrade-review/");
+  // /privacy and /sms-terms are the public legal pages required for
+  // Twilio's A2P 10DLC campaign registration - no login, no token, just
+  // plain public pages (see src/app/privacy/page.tsx, src/app/sms-terms/page.tsx).
+  const isLegalRoute = req.nextUrl.pathname === "/privacy" || req.nextUrl.pathname === "/sms-terms";
   // Presence only - the (dashboard) layout does the real lookup (active?
   // which sections?) since that needs Prisma, which middleware shouldn't
   // do on every request. An invalid/expired token just bounces to /login
@@ -38,6 +42,7 @@ export default auth((req) => {
     !isCleaningRoute &&
     !isGuestRoute &&
     !isUpgradeReviewRoute &&
+    !isLegalRoute &&
     !hasAccessCookie
   ) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
