@@ -39,10 +39,13 @@ export default async function GuestPreviewPage({
     prisma.integrationSettings.findUnique({
       where: { id: "hostaway" },
       select: {
-        guest_contact_name: true,
-        guest_contact_phone: true,
-        guest_contact_email: true,
-        guest_contact_message: true,
+        guest_contact_header: true,
+        guest_contact_general_name: true,
+        guest_contact_general_phone: true,
+        guest_contact_maintenance_name: true,
+        guest_contact_maintenance_phone: true,
+        guest_contact_afterhours_name: true,
+        guest_contact_afterhours_phone: true,
       },
     }),
   ]);
@@ -79,10 +82,19 @@ export default async function GuestPreviewPage({
         contact={
           contactSettings
             ? {
-                name: contactSettings.guest_contact_name,
-                phone: contactSettings.guest_contact_phone,
-                email: contactSettings.guest_contact_email,
-                message: contactSettings.guest_contact_message,
+                header: contactSettings.guest_contact_header,
+                general: {
+                  name: contactSettings.guest_contact_general_name,
+                  phone: contactSettings.guest_contact_general_phone,
+                },
+                maintenance: {
+                  name: contactSettings.guest_contact_maintenance_name,
+                  phone: contactSettings.guest_contact_maintenance_phone,
+                },
+                afterHours: {
+                  name: contactSettings.guest_contact_afterhours_name,
+                  phone: contactSettings.guest_contact_afterhours_phone,
+                },
               }
             : null
         }

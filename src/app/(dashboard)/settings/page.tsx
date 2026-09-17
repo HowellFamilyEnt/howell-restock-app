@@ -76,33 +76,50 @@ export default async function SettingsPage() {
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest contact info</h2>
         <p className="mb-4 text-sm text-gray-500">
           Shown in the &ldquo;Contact us&rdquo; section at the bottom of every property&apos;s guest
-          portal — one shared set for all properties, not per-property.
+          portal — one shared set for all properties, not per-property. A header message, then three
+          contact categories (General Inquiry, Maintenance, After Hours), each with its own name and
+          phone number.
         </p>
         <CredentialForm
           fields={[
             {
-              name: "guest_contact_name",
-              label: "Name / label",
-              masked: settings?.guest_contact_name ?? null,
-              placeholder: "e.g. Howell Family Enterprises",
+              name: "guest_contact_header",
+              label: "Header message",
+              masked: settings?.guest_contact_header ?? null,
+              placeholder: "e.g. Please message us through the booking portal for fastest response.",
             },
             {
-              name: "guest_contact_phone",
-              label: "Phone",
-              masked: settings?.guest_contact_phone ?? null,
+              name: "guest_contact_general_name",
+              label: "General Inquiry — Name",
+              masked: settings?.guest_contact_general_name ?? null,
+            },
+            {
+              name: "guest_contact_general_phone",
+              label: "General Inquiry — Phone",
+              masked: settings?.guest_contact_general_phone ?? null,
               placeholder: "+15551234567",
             },
             {
-              name: "guest_contact_email",
-              label: "Email",
-              masked: settings?.guest_contact_email ?? null,
-              placeholder: "help@yourcompany.com",
+              name: "guest_contact_maintenance_name",
+              label: "Maintenance — Name",
+              masked: settings?.guest_contact_maintenance_name ?? null,
             },
             {
-              name: "guest_contact_message",
-              label: "Message (optional)",
-              masked: settings?.guest_contact_message ?? null,
-              placeholder: "e.g. Call or text us anytime during your stay.",
+              name: "guest_contact_maintenance_phone",
+              label: "Maintenance — Phone",
+              masked: settings?.guest_contact_maintenance_phone ?? null,
+              placeholder: "+15551234567",
+            },
+            {
+              name: "guest_contact_afterhours_name",
+              label: "After Hours — Name",
+              masked: settings?.guest_contact_afterhours_name ?? null,
+            },
+            {
+              name: "guest_contact_afterhours_phone",
+              label: "After Hours — Phone",
+              masked: settings?.guest_contact_afterhours_phone ?? null,
+              placeholder: "+15551234567",
             },
           ]}
         />

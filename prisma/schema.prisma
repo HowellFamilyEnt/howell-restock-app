@@ -382,11 +382,18 @@ model IntegrationSettings {
   // Guest-facing "Contact us" block shown at the bottom of the guest
   // portal (src/components/GuestPortalView.tsx) - one shared set for
   // every property, editable from Settings rather than per-property since
-  // it's the same office/office line for everyone.
-  guest_contact_name        String?
-  guest_contact_phone       String?
-  guest_contact_email       String?
-  guest_contact_message     String?
+  // it's the same office/office lines for everyone. A header message
+  // (e.g. steering guests to message through the booking portal first)
+  // plus three fixed contact categories, each its own name + phone -
+  // simple fixed fields rather than a dynamic list since there are
+  // always exactly these three.
+  guest_contact_header             String?
+  guest_contact_general_name       String?
+  guest_contact_general_phone      String?
+  guest_contact_maintenance_name   String?
+  guest_contact_maintenance_phone  String?
+  guest_contact_afterhours_name    String?
+  guest_contact_afterhours_phone   String?
   updatedAt                 DateTime @updatedAt
 
   @@map("integration_settings")

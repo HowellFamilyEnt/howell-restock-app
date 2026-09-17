@@ -41,11 +41,13 @@ export type GuestPortalCheckinPhoto = {
   caption: string | null;
 };
 
+export type GuestContactPerson = { name: string | null; phone: string | null };
+
 export type GuestPortalContact = {
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-  message: string | null;
+  header: string | null;
+  general: GuestContactPerson;
+  maintenance: GuestContactPerson;
+  afterHours: GuestContactPerson;
 };
 
 // The actual guest-facing layout - shared by the real portal
@@ -232,28 +234,33 @@ export default function GuestPortalView({
 
       {upgradesSection}
 
-      {contact && (contact.name || contact.phone || contact.email || contact.message) && (
-        <Section title="Contact us">
-          <div className="space-y-1 text-sm text-gray-700">
-            {contact.name && <p className="font-medium text-gray-900">{contact.name}</p>}
-            {contact.phone && (
-              <p>
-                <a href={`tel:${contact.phone}`} className="text-gray-700 underline">
-                  {contact.phone}
-                </a>
-              </p>
-            )}
-            {contact.email && (
-              <p>
-                <a href={`mailto:${contact.email}`} className="text-gray-700 underline">
-                  {contact.email}
-                </a>
-              </p>
-            )}
-            {contact.message && <p className="whitespace-pre-wrap text-gray-600">{contact.message}</p>}
-          </div>
-        </Section>
-      )}
+      {contact &&
+        (contact.header || contact.general.name || contact.maintenance.name || contact.afterHours.name) && (
+          <Section title="Contact us">
+            <div className="space-y-4">
+              {contact.header && <p className="text-sm text-gray-600">{contact.header}</p>}
+
+              {[
+                { title: "General Inquiry", person: contact.general },
+                { title: "Maintenance", person: contact.maintenance },
+                { title: "After Hours", person: contact.afterHours },
+              ].map(
+                ({ title, person }) =>
+                  (person.name || person.phone) && (
+                    <div key={title}>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</p>
+                      {person.name && <p className="text-sm font-medium text-gray-900">{person.name}</p>}
+                      {person.phone && (
+                        <a href={`tel:${person.phone}`} className="text-sm text-gray-700 underline">
+                          {person.phone}
+                        </a>
+                      )}
+                    </div>
+                  )
+              )}
+            </div>
+          </Section>
+        )}
     </div>
   );
 }
