@@ -4,6 +4,7 @@ import ResyncButton from "./ResyncButton";
 import DeleteLockButton from "./DeleteLockButton";
 import { assignLock, toggleSeamLockActive } from "./actions";
 import PropertySearchSelect from "@/components/PropertySearchSelect";
+import SaveButton from "@/components/SaveButton";
 
 const BATTERY_STYLES: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
@@ -158,13 +159,11 @@ export default async function LocksPage({
                                 properties={properties.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
                               />
                             </div>
-                            <button
-                              type="submit"
-                              className="shrink-0 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                            >
-                              Save
-                            </button>
+                            <SaveButton size="sm" />
                           </form>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {assigned ? `Assigned to ${assigned.name_address}` : "Not assigned to any property"}
+                          </p>
                         </td>
                         <td className="px-4 py-2 text-right">
                           <div className="flex items-center justify-end gap-3">
@@ -215,13 +214,11 @@ export default async function LocksPage({
                           properties={properties.map((p) => ({ id: p.id, label: p.address ?? p.name_address }))}
                         />
                       </div>
-                      <button
-                        type="submit"
-                        className="shrink-0 rounded-md bg-gray-100 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200"
-                      >
-                        Save
-                      </button>
+                      <SaveButton size="sm" />
                     </form>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {assigned ? `Assigned to ${assigned.name_address}` : "Not assigned to any property"}
+                    </p>
                     <div className="mt-3 flex items-center justify-end gap-3">
                       <form action={toggleSeamLockActive.bind(null, lock.device_id, !lock.active)}>
                         <button type="submit" className="text-xs font-medium text-gray-600 hover:text-gray-900">

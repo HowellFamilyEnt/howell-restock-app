@@ -2,18 +2,23 @@ import { prisma } from "@/lib/prisma";
 import { createTeamMember, toggleTeamMemberActive, updateTeamMemberColor } from "./actions";
 import DeleteMemberButton from "./DeleteMemberButton";
 import SaveButton from "@/components/SaveButton";
+import TeamCodeSyncButton from "./TeamCodeSyncButton";
 
 export default async function TeamPage() {
   const members = await prisma.teamMember.findMany({ orderBy: { name: "asc" } });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Team</h1>
-        <p className="text-sm text-gray-500">
-          {members.length} total — assign members to properties to route work order links to them. Each
-          member&apos;s color shows on their work orders on the Calendar page.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">Team</h1>
+          <p className="text-sm text-gray-500">
+            {members.length} total — assign members to properties to route work order links to them. Each
+            member&apos;s color shows on their work orders on the Calendar page. Each active member also
+            gets a personal door code (last 4 of their phone) auto-pushed to every locked property.
+          </p>
+        </div>
+        <TeamCodeSyncButton />
       </div>
 
       <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white md:block">

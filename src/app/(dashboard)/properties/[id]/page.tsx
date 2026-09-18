@@ -21,6 +21,7 @@ import {
   updateLicenseInfo,
   toggleGuestAutomationForProperty,
   issueVendorAccessCode,
+  issueOneTimeCode,
   createWorkOrderAction,
 } from "./actions";
 import { togglePropertyActive } from "../actions";
@@ -31,6 +32,7 @@ import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
 import CheckinPhotoForm from "./CheckinPhotoForm";
 import BuildingPhotoForm from "./BuildingPhotoForm";
+import OneTimeCodeSection from "./OneTimeCodeSection";
 import SaveButton from "@/components/SaveButton";
 
 const licenseStatusStyles: Record<string, string> = {
@@ -76,7 +78,7 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const [items, teamMembers, workOrders, checkinPhotos, parkingPhotos, assignedLock, cleaningStatuses] =
+  const [items, teamMembers, workOrders, checkinPhotos, parkingPhotos, assignedLock, cleaningStatuses, activeOneTimeCode] =
     await Promise.all([
       prisma.item.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
       prisma.teamMember.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
@@ -92,6 +94,10 @@ export default async function PropertyDetailPage({
         ? prisma.seamLock.findUnique({ where: { device_id: property.smart_lock_id } })
         : Promise.resolve(null),
       activeCleaningStatuses(),
+      prisma.guestAccessCode.findFirst({
+        where: { property_id: property.id, purpose: "onetime", ends_at: { gt: new Date() } },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
   const parByItemId = new Map(property.parLevels.map((p) => [p.item_id, p.target_qty]));
   const itemsByRoom = groupByRoom(items, (item) => item.room_groups);
@@ -189,6 +195,14 @@ export default async function PropertyDetailPage({
           </div>
           <SaveButton />
         </form>
+
+        {property.smart_lock_id && (
+          <OneTimeCodeSection
+            propertyId={property.id}
+            activeCode={activeOneTimeCode?.code ?? null}
+            activeExpiresAt={activeOneTimeCode?.ends_at?.toISOString() ?? null}
+          />
+        )}
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">

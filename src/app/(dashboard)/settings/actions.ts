@@ -92,3 +92,15 @@ export async function deleteAccessLink(linkId: string) {
   await prisma.accessLink.delete({ where: { id: linkId } });
   revalidatePath("/settings");
 }
+
+export async function updateGuestPortalAccentColor(formData: FormData) {
+  const color = String(formData.get("guest_portal_accent_color") ?? "").trim();
+  await prisma.integrationSettings.upsert({
+    where: { id: "hostaway" },
+    update: { guest_portal_accent_color: color || null },
+    create: { id: "hostaway", guest_portal_accent_color: color || null },
+  });
+  revalidatePath("/settings");
+  revalidatePath("/guest/[token]", "page");
+  revalidatePath("/guest-preview");
+}

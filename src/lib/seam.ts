@@ -77,6 +77,7 @@ export async function createSeamAccessCode(
   input: {
     deviceId: string;
     name: string;
+    code?: string; // custom PIN (4-12 digits) - confirmed live 2026-09-18; omit to let Seam auto-generate one
     startsAt?: Date;
     endsAt?: Date;
     isOneTimeUse?: boolean;
@@ -86,12 +87,21 @@ export async function createSeamAccessCode(
   const data = await seamRequest<{ access_code: SeamAccessCode }>(apiKey, "/access_codes/create", {
     device_id: input.deviceId,
     name: input.name,
+    ...(input.code ? { code: input.code } : {}),
     ...(input.startsAt ? { starts_at: input.startsAt.toISOString() } : {}),
     ...(input.endsAt ? { ends_at: input.endsAt.toISOString() } : {}),
     ...(input.isOneTimeUse ? { is_one_time_use: true } : {}),
     ...(input.useBackupPool ? { use_backup_access_code_pool: true } : {}),
   });
   return data.access_code;
+}
+
+// Confirmed live 2026-09-18 - POST, same async action_attempt envelope
+// as /access_codes/update, not a synchronous deletion.
+export async function deleteSeamAccessCode(apiKey: string, accessCodeId: string): Promise<void> {
+  await seamRequest<{ action_attempt: { status: string } }>(apiKey, "/access_codes/delete", {
+    access_code_id: accessCodeId,
+  });
 }
 
 // Every code Seam itself created/manages on this device (guest and

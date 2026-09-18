@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import CredentialForm from "./CredentialForm";
 import AccessLinksSection from "./AccessLinksSection";
-import { toggleGuestAutomation } from "./actions";
+import { toggleGuestAutomation, updateGuestPortalAccentColor } from "./actions";
 import { baseUrl } from "@/lib/workorders";
 import PropertySearchSelect from "@/components/PropertySearchSelect";
+import SaveButton from "@/components/SaveButton";
 
 const WEBHOOK_URL_PATH = "/api/webhooks/hostaway";
 
@@ -151,6 +152,23 @@ export default async function SettingsPage() {
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest portal color</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Accent color used across the guest portal — buttons, section badges, the numbered check-in and
+          parking step markers.
+        </p>
+        <form action={updateGuestPortalAccentColor} className="flex items-center gap-3">
+          <input
+            type="color"
+            name="guest_portal_accent_color"
+            defaultValue={settings?.guest_portal_accent_color ?? "#111827"}
+            className="h-9 w-14 cursor-pointer rounded border border-gray-300 p-0.5"
+          />
+          <SaveButton />
+        </form>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Hostaway</h2>
         <p className="mb-4 text-sm text-gray-500">
           Used by the &ldquo;Sync from Hostaway&rdquo; button on the Properties page. Find these in
@@ -236,6 +254,25 @@ export default async function SettingsPage() {
               name: "slack_channel_id",
               label: "Channel ID",
               masked: settings?.slack_channel_id ?? null,
+              placeholder: "C0123456789",
+            },
+          ]}
+        />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Slack — Lock Alerts</h2>
+        <p className="mb-4 text-sm text-gray-500">
+          A separate channel (same bot as above) that gets alerted when a lock has been offline for 30+
+          minutes, or its battery drops below 30% then 10%. Checked every 15 minutes. Invite the same bot
+          into this channel too, then enter its ID below.
+        </p>
+        <CredentialForm
+          fields={[
+            {
+              name: "slack_lock_alerts_channel_id",
+              label: "Channel ID",
+              masked: settings?.slack_lock_alerts_channel_id ?? null,
               placeholder: "C0123456789",
             },
           ]}

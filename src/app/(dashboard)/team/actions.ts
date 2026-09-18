@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { provisionTeamCodesForNewMember, removeAllTeamCodesForMember, syncAllTeamCodes } from "@/lib/teamAccessCodes";
 
 // A handful of visually distinct defaults, cycled by current member count
 // so new members don't all land on the same color before anyone's picked
@@ -21,7 +22,7 @@ export async function createTeamMember(formData: FormData) {
 
   const existingCount = await prisma.teamMember.count();
 
-  await prisma.teamMember.create({
+  const member = await prisma.teamMember.create({
     data: {
       name,
       email: email || null,
@@ -30,7 +31,10 @@ export async function createTeamMember(formData: FormData) {
     },
   });
 
+  await provisionTeamCodesForNewMember(member.id);
+
   revalidatePath("/team");
+  revalidatePath("/locks/[deviceId]", "page");
 }
 
 export async function updateTeamMemberColor(memberId: string, formData: FormData) {
@@ -48,7 +52,17 @@ export async function toggleTeamMemberActive(memberId: string, next: boolean) {
     where: { id: memberId },
     data: { active: next },
   });
+
+  // Deactivating revokes their standing access everywhere; reactivating
+  // re-provisions it the same way a brand-new member would get it.
+  if (next) {
+    await provisionTeamCodesForNewMember(memberId);
+  } else {
+    await removeAllTeamCodesForMember(memberId);
+  }
+
   revalidatePath("/team");
+  revalidatePath("/locks/[deviceId]", "page");
 }
 
 export async function deleteTeamMember(
@@ -65,7 +79,22 @@ export async function deleteTeamMember(
     return `Can't delete — assigned to ${propertyCount} propert${propertyCount === 1 ? "y" : "ies"} and ${workOrderCount} work order${workOrderCount === 1 ? "" : "s"}. Deactivate instead.`;
   }
 
+  await removeAllTeamCodesForMember(memberId);
   await prisma.teamMember.delete({ where: { id: memberId } });
   revalidatePath("/team");
+  revalidatePath("/locks/[deviceId]", "page");
   return "Deleted.";
+}
+
+// Manual backfill/repair pass - covers existing members and existing
+// locked properties from before this feature existed; the create/assign
+// triggers handle everything going forward on their own.
+export async function runTeamCodeSync(
+  _prevState: string | undefined,
+  _formData: FormData
+): Promise<string> {
+  const { attempted } = await syncAllTeamCodes();
+  revalidatePath("/team");
+  revalidatePath("/locks/[deviceId]", "page");
+  return `Synced team codes (${attempted} member/property pairs checked).`;
 }

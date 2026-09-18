@@ -29,7 +29,7 @@ export default async function BookingConfirmationsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">Booking Confirmations</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Reservations</h1>
         <p className="text-sm text-gray-500">
           {confirmations.length} recent — direct email/text sent to each guest within minutes of booking.
         </p>

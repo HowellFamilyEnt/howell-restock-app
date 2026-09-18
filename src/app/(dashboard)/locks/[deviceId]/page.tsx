@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSeamApiKey } from "@/lib/settings";
 import { listSeamAccessCodes, listUnmanagedSeamAccessCodes, type SeamAccessCode } from "@/lib/seam";
+import { addLockAccessCode } from "./actions";
+import AddLockCodeForm from "./AddLockCodeForm";
+import DeleteLockCodeButton from "./DeleteLockCodeButton";
+import ResyncButton from "../ResyncButton";
 
 const STATUS_STYLES: Record<string, string> = {
   Active: "bg-green-100 text-green-700",
@@ -78,22 +82,25 @@ export default async function LockDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href="/locks" className="text-sm text-gray-500 hover:text-gray-900">
-          ← Locks
-        </Link>
-        <h1 className="text-lg font-semibold text-gray-900">{lock.display_name}</h1>
-        <p className="text-sm text-gray-500">
-          {lock.manufacturer ?? "Unknown brand"}
-          {property && (
-            <>
-              {" · "}
-              <Link href={`/properties/${property.id}`} className="underline hover:text-gray-900">
-                {property.name_address}
-              </Link>
-            </>
-          )}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Link href="/locks" className="text-sm text-gray-500 hover:text-gray-900">
+            ← Locks
+          </Link>
+          <h1 className="text-lg font-semibold text-gray-900">{lock.display_name}</h1>
+          <p className="text-sm text-gray-500">
+            {lock.manufacturer ?? "Unknown brand"}
+            {property && (
+              <>
+                {" · "}
+                <Link href={`/properties/${property.id}`} className="underline hover:text-gray-900">
+                  {property.name_address}
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+        <ResyncButton />
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -118,6 +125,7 @@ export default async function LockDetailPage({
                   <th className="px-3 py-2">Window</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Source</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -140,11 +148,20 @@ export default async function LockDetailPage({
                         <StatusBadge status={code.display_status ?? code.status} />
                       </td>
                       <td className="px-3 py-2 text-xs text-gray-500">{code.source}</td>
+                      <td className="px-3 py-2 text-right">
+                        <DeleteLockCodeButton accessCodeId={code.access_code_id} />
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {!fetchError && (
+          <div className="mt-4">
+            <AddLockCodeForm action={addLockAccessCode.bind(null, deviceId)} />
           </div>
         )}
       </div>

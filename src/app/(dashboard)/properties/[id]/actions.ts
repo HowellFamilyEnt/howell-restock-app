@@ -420,6 +420,56 @@ export async function issueVendorAccessCode(propertyId: string, _prevState: stri
   return "Code issued — see it on the Guest Access Codes page.";
 }
 
+// A quick one-off code to hand out on the spot (a showing, a delivery,
+// etc.) - one-time-use on the lock itself, and also time-boxed to 2 hours
+// so it self-expires even if never used. The 2-hour window doubles as
+// how long the property page keeps showing it in the field below; after
+// that it's just gone from view, matching "visible for 2 hours then I
+// can go away until we issue a new one" rather than needing a manual
+// dismiss step.
+const ONE_TIME_CODE_VISIBLE_MS = 2 * 60 * 60 * 1000;
+
+export async function issueOneTimeCode(propertyId: string): Promise<string> {
+  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  if (!property) return "Property not found.";
+  if (!property.smart_lock_id) return "No smart lock assigned to this property yet.";
+
+  const apiKey = await getSeamApiKey();
+  if (!apiKey) return "No Seam API key configured on the Settings page.";
+
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt.getTime() + ONE_TIME_CODE_VISIBLE_MS);
+
+  try {
+    const accessCode = await createSeamAccessCode(apiKey, {
+      deviceId: property.smart_lock_id,
+      name: "HFE-OneTime",
+      startsAt,
+      endsAt,
+      isOneTimeUse: true,
+    });
+
+    await prisma.guestAccessCode.create({
+      data: {
+        property_id: propertyId,
+        purpose: "onetime",
+        label: "One-time code",
+        starts_at: startsAt,
+        ends_at: endsAt,
+        seam_access_code_id: accessCode.access_code_id,
+        code: accessCode.code,
+        status: accessCode.display_status ?? accessCode.status,
+      },
+    });
+  } catch (error) {
+    return error instanceof Error ? error.message : "Seam request failed.";
+  }
+
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath("/guest-access-codes");
+  return "";
+}
+
 export async function createWorkOrderAction(propertyId: string, formData: FormData) {
   const session = await auth();
   const dueDateRaw = String(formData.get("due_date") ?? "").trim();

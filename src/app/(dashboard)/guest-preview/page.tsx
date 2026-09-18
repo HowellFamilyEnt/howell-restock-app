@@ -46,6 +46,7 @@ export default async function GuestPreviewPage({
         guest_contact_maintenance_phone: true,
         guest_contact_afterhours_name: true,
         guest_contact_afterhours_phone: true,
+        guest_portal_accent_color: true,
       },
     }),
   ]);
@@ -79,6 +80,7 @@ export default async function GuestPreviewPage({
         }
         checkinPhotos={checkinPhotos}
         parkingPhotos={parkingPhotos}
+        accentColor={contactSettings?.guest_portal_accent_color}
         contact={
           contactSettings
             ? {

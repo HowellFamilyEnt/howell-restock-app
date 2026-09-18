@@ -150,6 +150,7 @@ model Property {
   checkinPhotos        CheckinPhoto[]
   parkingPhotos        ParkingPhoto[]
   upgradeRequests      UpgradeRequest[]
+  teamAccessCodes      TeamAccessCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -266,6 +267,7 @@ model TeamMember {
 
   assignedProperties Property[]
   workOrders         WorkOrder[]
+  accessCodes        TeamAccessCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -364,6 +366,11 @@ model IntegrationSettings {
   // e.g. from "View channel details" in Slack.
   slack_bot_token           String?
   slack_channel_id          String?
+  // A second channel for the same bot - lock-health alerts (offline 30+
+  // min, battery under 30%/10%) go here instead of #upsell, since it's a
+  // different audience/urgency. Reuses slack_bot_token above; the bot
+  // just needs to also be /invite'd into this channel.
+  slack_lock_alerts_channel_id String?
   // Stripe keys for the upgrade-request flow (src/lib/stripe.ts) -
   // secret key used server-side, publishable key loaded client-side by
   // Stripe.js to render the card form. Use test-mode keys (sk_test_.../
@@ -394,6 +401,11 @@ model IntegrationSettings {
   guest_contact_maintenance_phone  String?
   guest_contact_afterhours_name    String?
   guest_contact_afterhours_phone   String?
+  // Accent color for the guest portal (buttons, section badges, the
+  // numbered check-in/parking step markers) - hex, picked via a native
+  // <input type="color"> same as Team member colors. Falls back to the
+  // existing near-black default when unset.
+  guest_portal_accent_color        String?
   updatedAt                 DateTime @updatedAt
 
   @@map("integration_settings")
@@ -502,6 +514,18 @@ model SeamLock {
   // vanishes - this is the visible flag instead.
   missing_since  DateTime?
   lastSyncedAt   DateTime  @default(now())
+  // Lock-health Slack alerts (src/lib/lockHealth.ts, run by the
+  // check-lock-health cron). offline_since is stamped the first sync
+  // that observes online:false after being online (or new), cleared the
+  // moment it's back online - the cron only alerts once
+  // now - offline_since exceeds 30 minutes, tracked via
+  // offline_alert_sent so it fires once per outage, not every cron run.
+  // battery_alert_level tracks the lowest threshold ("below_30" /
+  // "below_10") already alerted on, reset to null once the battery is
+  // back above 30% so a future drop alerts again.
+  offline_since      DateTime?
+  offline_alert_sent Boolean   @default(false)
+  battery_alert_level String?
 
   @@map("seam_locks")
 }
@@ -565,6 +589,30 @@ model ParkingPhoto {
   createdAt   DateTime @default(now())
 
   @@map("parking_photos")
+}
+
+// One row per (team member, property-with-a-lock) pair - a real Seam
+// code kept in sync as staff and locks change, named "HFE-Team-<name>"
+// with the code itself set to the last 4 digits of that member's phone,
+// so it's both personal (per-person audit trail on the lock's own
+// activity log) and memorable without looking anything up. Deliberately
+// separate from GuestAccessCode (guest/vendor codes), which are scoped
+// to one reservation/visit rather than standing indefinitely.
+model TeamAccessCode {
+  id                  String     @id @default(cuid())
+  team_member_id      String
+  teamMember          TeamMember @relation(fields: [team_member_id], references: [id], onDelete: Cascade)
+  property_id         String
+  property            Property   @relation(fields: [property_id], references: [id], onDelete: Cascade)
+  seam_access_code_id String?
+  code                String?
+  status               String?
+  error                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([team_member_id, property_id])
+  @@map("team_access_codes")
 }
 
 // A guest's request for an upgrade (early check-in, late checkout, or an

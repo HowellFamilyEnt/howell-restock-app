@@ -133,6 +133,11 @@ export async function getSlackCredentials(): Promise<SlackCredentials | null> {
   return null;
 }
 
+export async function getSlackLockAlertsChannelId(): Promise<string | null> {
+  const settings = await prisma.integrationSettings.findUnique({ where: { id: "hostaway" } });
+  return settings?.slack_lock_alerts_channel_id ?? null;
+}
+
 export async function getStripeSecretKey(): Promise<string | null> {
   const envKey = process.env.STRIPE_SECRET_KEY;
   if (envKey) return envKey;

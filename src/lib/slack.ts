@@ -64,6 +64,14 @@ export async function postUpgradeRequestToSlack(
   return { ts: data.ts };
 }
 
+export async function postSlackMessage(botToken: string, channelId: string, text: string): Promise<{ ts: string }> {
+  const data = await slackRequest<{ ok: boolean; ts: string }>(botToken, "chat.postMessage", {
+    channel: channelId,
+    text,
+  });
+  return { ts: data.ts };
+}
+
 export async function reactToSlackMessage(
   botToken: string,
   channelId: string,

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { syncSeamLocks } from "@/lib/seamSync";
+import { provisionTeamCodesForProperty } from "@/lib/teamAccessCodes";
 
 // Keeps the assignment 1:1: clears any other property currently pointing
 // at this device before assigning it to the new one (or to nothing, if
@@ -18,9 +19,11 @@ export async function assignLock(deviceId: string, formData: FormData) {
 
   if (propertyId) {
     await prisma.property.update({ where: { id: propertyId }, data: { smart_lock_id: deviceId } });
+    await provisionTeamCodesForProperty(propertyId);
   }
 
   revalidatePath("/locks");
+  revalidatePath("/locks/[deviceId]", "page");
   revalidatePath("/properties/[id]", "page");
 }
 
@@ -28,6 +31,7 @@ export async function resyncSeamLocks(): Promise<string> {
   try {
     const result = await syncSeamLocks();
     revalidatePath("/locks");
+    revalidatePath("/locks/[deviceId]", "page");
     const missingNote = result.missing > 0 ? ` (${result.missing} missing from Seam)` : "";
     return `Synced ${result.synced} device${result.synced === 1 ? "" : "s"} from Seam${missingNote}.`;
   } catch (error) {

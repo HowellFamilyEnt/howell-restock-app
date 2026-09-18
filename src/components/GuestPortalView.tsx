@@ -2,8 +2,8 @@ import { formatHour, formatReservationDate } from "@/lib/calendar";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <h2 className="mb-2 text-sm font-semibold text-gray-900">{title}</h2>
+    <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <h2 className="mb-2 text-sm font-semibold tracking-tight text-gray-900">{title}</h2>
       {children}
     </div>
   );
@@ -68,6 +68,7 @@ export default function GuestPortalView({
   contact,
   backupCodeSlot,
   upgradesSection,
+  accentColor,
 }: {
   property: GuestPortalProperty;
   arrivalDateStr: string | null | undefined;
@@ -83,12 +84,19 @@ export default function GuestPortalView({
   // real guest portal, never /guest-preview, which must not be able to
   // trigger a real Stripe charge.
   upgradesSection?: React.ReactNode;
+  // Set as a CSS custom property on the wrapper below, so it cascades
+  // down to UpgradeRequestSection's buttons too even though those are
+  // passed in as children rather than rendered directly here.
+  accentColor?: string | null;
 }) {
   const checkInLabel = formatHour(checkInHour);
   const checkOutLabel = formatHour(checkOutHour);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div
+      className="mx-auto max-w-2xl space-y-6"
+      style={{ "--accent": accentColor || "#111827" } as React.CSSProperties}
+    >
       {property.building_photo_url && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
@@ -162,7 +170,10 @@ export default function GuestPortalView({
             <ol className={`space-y-4 ${property.guest_checkin_instructions ? "mt-4" : ""}`}>
               {checkinPhotos.map((photo, index) => (
                 <li key={photo.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-medium text-white">
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: "var(--accent)" }}
+                  >
                     {index + 1}
                   </span>
                   <div>
@@ -190,7 +201,10 @@ export default function GuestPortalView({
             <ol className={`space-y-4 ${property.parking_instructions ? "mt-4" : ""}`}>
               {parkingPhotos.map((photo, index) => (
                 <li key={photo.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-medium text-white">
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: "var(--accent)" }}
+                  >
                     {index + 1}
                   </span>
                   <div>
