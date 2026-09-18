@@ -100,6 +100,15 @@ export async function createSeamAccessCode(
     startsAt?: Date;
     endsAt?: Date;
     isOneTimeUse?: boolean;
+    // Confirmed live 2026-09-18: some "online" (cloud-connected) locks -
+    // e.g. this account's Igloohome devices - reject is_one_time_use
+    // entirely unless the code is also offline (algorithmic, valid
+    // without the lock needing live connectivity). Also confirmed: even
+    // with this set, is_one_time_use still can't combine with ends_at -
+    // that's a universal Seam constraint, not specific to online/offline.
+    // An offline code's PIN isn't assigned synchronously - expect `code`
+    // on the response to be null for a beat; poll getSeamAccessCode.
+    isOfflineAccessCode?: boolean;
     useBackupPool?: boolean;
   }
 ): Promise<SeamAccessCode> {
@@ -110,6 +119,7 @@ export async function createSeamAccessCode(
     ...(input.startsAt ? { starts_at: input.startsAt.toISOString() } : {}),
     ...(input.endsAt ? { ends_at: input.endsAt.toISOString() } : {}),
     ...(input.isOneTimeUse ? { is_one_time_use: true } : {}),
+    ...(input.isOfflineAccessCode ? { is_offline_access_code: true } : {}),
     ...(input.useBackupPool ? { use_backup_access_code_pool: true } : {}),
   });
   return data.access_code;

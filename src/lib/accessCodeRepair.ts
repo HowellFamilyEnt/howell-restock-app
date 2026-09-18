@@ -44,7 +44,15 @@ export async function repairGuestAccessCodes(): Promise<{ checked: number; repai
     if (live.status === "set" && (!live.errors || live.errors.length === 0)) {
       await prisma.guestAccessCode.update({
         where: { id: row.id },
-        data: { confirmed_active: true, status: live.display_status ?? live.status, error: null },
+        data: {
+          confirmed_active: true,
+          status: live.display_status ?? live.status,
+          error: null,
+          // Offline (e.g. one-time-use) codes don't get their PIN back
+          // synchronously at creation - backfill it here if the issuing
+          // request's own short poll hadn't caught it yet.
+          ...(live.code && !row.code ? { code: live.code } : {}),
+        },
       });
       continue;
     }

@@ -201,6 +201,7 @@ export default async function PropertyDetailPage({
             propertyId={property.id}
             activeCode={activeOneTimeCode?.code ?? null}
             activeExpiresAt={activeOneTimeCode?.ends_at?.toISOString() ?? null}
+            pending={!!activeOneTimeCode && !activeOneTimeCode.code}
           />
         )}
       </div>

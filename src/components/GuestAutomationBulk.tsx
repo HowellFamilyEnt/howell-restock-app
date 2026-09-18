@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useContext, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { bulkSetGuestAutomation } from "@/app/(dashboard)/properties/actions";
 
 type SelectionContextValue = {
   selected: Set<string>;
   toggle: (id: string) => void;
+  clear: () => void;
 };
 
 const SelectionContext = createContext<SelectionContextValue | null>(null);
@@ -27,7 +29,7 @@ export function GuestAutomationProvider({ children }: { children: React.ReactNod
   }
 
   return (
-    <SelectionContext.Provider value={{ selected, toggle }}>
+    <SelectionContext.Provider value={{ selected, toggle, clear: () => setSelected(new Set()) }}>
       {children}
       <GuestAutomationBulkBar />
     </SelectionContext.Provider>
@@ -57,14 +59,20 @@ export function PropertyAutomationCheckbox({ propertyId }: { propertyId: string 
 // than per-area, since selection spans every group - shows a running
 // count and only enables the two buttons once something's checked.
 function GuestAutomationBulkBar() {
-  const { selected } = useSelection();
+  const { selected, clear } = useSelection();
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function apply(enabled: boolean) {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
     startTransition(async () => {
       await bulkSetGuestAutomation(ids, enabled);
+      // A server action called directly (not via <form action>) doesn't
+      // auto-refresh the page - without this the On/Off badges would
+      // keep showing stale values until some unrelated navigation.
+      router.refresh();
+      clear();
     });
   }
 

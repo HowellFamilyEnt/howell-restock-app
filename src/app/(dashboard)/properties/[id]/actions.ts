@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { createWorkOrderForProperty } from "@/lib/workorders";
 import { getSeamApiKey } from "@/lib/settings";
-import { createSeamAccessCode } from "@/lib/seam";
+import { createSeamAccessCode, getSeamAccessCode } from "@/lib/seam";
 import { zonedTimeToUtc } from "@/lib/calendar";
 import { uploadNotePhoto } from "@/lib/storage";
 
@@ -391,12 +391,20 @@ export async function issueVendorAccessCode(propertyId: string, _prevState: stri
   if (endsAt <= startsAt) return "End time must be after the start time.";
 
   try {
+    // No isOneTimeUse here - confirmed live 2026-09-18: Seam never
+    // allows is_one_time_use combined with ends_at, on any lock. A
+    // vendor's window being scheduled is the security property that
+    // actually matters for a visit (they can only get in during their
+    // appointment), so that's what's kept; the code just works any
+    // number of times within that window rather than exactly once. This
+    // also means it stays a normal, deletable code if a visit is
+    // cancelled - the one-time-use alternative would require an offline
+    // code, which Seam won't let you remove once set.
     const accessCode = await createSeamAccessCode(apiKey, {
       deviceId: property.smart_lock_id,
       name: label,
       startsAt,
       endsAt,
-      isOneTimeUse: true,
     });
 
     await prisma.guestAccessCode.create({
@@ -438,16 +446,32 @@ export async function issueOneTimeCode(propertyId: string): Promise<string> {
   if (!apiKey) return "No Seam API key configured on the Settings page.";
 
   const startsAt = new Date();
-  const endsAt = new Date(startsAt.getTime() + ONE_TIME_CODE_VISIBLE_MS);
+  // The 2-hour window here is purely how long OUR UI keeps showing the
+  // code (starts_at/ends_at on our own row below) - it's deliberately
+  // never sent to Seam's create call. Confirmed live 2026-09-18: Seam
+  // rejects is_one_time_use combined with starts_at/ends_at for "online"
+  // (cloud-connected) locks like this one's Igloohome device
+  // ("Cannot set is_one_time_use for online codes"). is_one_time_use
+  // alone is what actually matters here - the code self-revokes after
+  // its first real use regardless of any window.
+  const visibleUntil = new Date(startsAt.getTime() + ONE_TIME_CODE_VISIBLE_MS);
 
   try {
-    const accessCode = await createSeamAccessCode(apiKey, {
+    let accessCode = await createSeamAccessCode(apiKey, {
       deviceId: property.smart_lock_id,
       name: "HFE-OneTime",
-      startsAt,
-      endsAt,
       isOneTimeUse: true,
+      // Required alongside is_one_time_use for "online" locks like this
+      // account's Igloohome devices (confirmed live) - the tradeoff is
+      // the PIN isn't assigned synchronously, so poll briefly for it
+      // below rather than trusting the create response's (null) code.
+      isOfflineAccessCode: true,
     });
+
+    for (let attempt = 0; attempt < 6 && !accessCode.code; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      accessCode = await getSeamAccessCode(apiKey, accessCode.access_code_id);
+    }
 
     await prisma.guestAccessCode.create({
       data: {
@@ -455,10 +479,14 @@ export async function issueOneTimeCode(propertyId: string): Promise<string> {
         purpose: "onetime",
         label: "One-time code",
         starts_at: startsAt,
-        ends_at: endsAt,
+        ends_at: visibleUntil,
         seam_access_code_id: accessCode.access_code_id,
         code: accessCode.code,
         status: accessCode.display_status ?? accessCode.status,
+        // A rare miss here (PIN still not assigned after ~18s) isn't
+        // fatal - the check-lock-health cron's repair pass will fill in
+        // the code and confirm it the next time it runs.
+        error: accessCode.code ? null : "Still assigning a code - check back in a minute.",
       },
     });
   } catch (error) {
