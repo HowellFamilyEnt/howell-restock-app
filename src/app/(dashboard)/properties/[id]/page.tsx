@@ -28,6 +28,7 @@ import { togglePropertyActive } from "../actions";
 import { groupByRoom } from "@/lib/roomGroups";
 import { computeLicenseStatus } from "@/lib/licenses";
 import { activeCleaningStatuses } from "@/lib/cleaningStatus";
+import { manufacturerSupportsOneTimeCode } from "@/lib/seam";
 import DeletePropertyButton from "./DeletePropertyButton";
 import VendorAccessCodeForm from "./VendorAccessCodeForm";
 import CheckinPhotoForm from "./CheckinPhotoForm";
@@ -196,7 +197,7 @@ export default async function PropertyDetailPage({
           <SaveButton />
         </form>
 
-        {property.smart_lock_id && (
+        {property.smart_lock_id && manufacturerSupportsOneTimeCode(assignedLock?.manufacturer) && (
           <OneTimeCodeSection
             propertyId={property.id}
             activeCode={activeOneTimeCode?.code ?? null}

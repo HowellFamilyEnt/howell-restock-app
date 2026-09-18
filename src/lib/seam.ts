@@ -9,6 +9,20 @@
 
 const SEAM_BASE_URL = "https://connect.getseam.com";
 
+// Which lock brands actually support is_one_time_use codes via Seam,
+// confirmed live 2026-09-18 against one real device per brand in this
+// account: Igloohome works (with is_offline_access_code); Kwikset,
+// August, and Schlage all reject it outright, in both the plain and
+// offline forms - not something fixable in code, a real capability gap
+// on Seam's side for those brands. Used to hide the one-time-code button
+// on brands where it can never work, rather than let someone hit a
+// guaranteed dead-end click.
+export const ONE_TIME_CODE_SUPPORTED_MANUFACTURERS = ["Igloohome"];
+
+export function manufacturerSupportsOneTimeCode(manufacturer: string | null | undefined): boolean {
+  return !!manufacturer && ONE_TIME_CODE_SUPPORTED_MANUFACTURERS.includes(manufacturer);
+}
+
 // Carries Seam's own machine-readable `error.type` (e.g.
 // "offline_access_code_immutable") alongside the human message, so
 // callers can branch on a specific known failure instead of pattern

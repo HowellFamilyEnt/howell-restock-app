@@ -448,26 +448,42 @@ export async function issueOneTimeCode(propertyId: string): Promise<string> {
   const startsAt = new Date();
   // The 2-hour window here is purely how long OUR UI keeps showing the
   // code (starts_at/ends_at on our own row below) - it's deliberately
-  // never sent to Seam's create call. Confirmed live 2026-09-18: Seam
-  // rejects is_one_time_use combined with starts_at/ends_at for "online"
-  // (cloud-connected) locks like this one's Igloohome device
-  // ("Cannot set is_one_time_use for online codes"). is_one_time_use
-  // alone is what actually matters here - the code self-revokes after
-  // its first real use regardless of any window.
+  // never sent to Seam's create call, since is_one_time_use can never
+  // combine with a window on any lock.
   const visibleUntil = new Date(startsAt.getTime() + ONE_TIME_CODE_VISIBLE_MS);
 
   try {
-    let accessCode = await createSeamAccessCode(apiKey, {
-      deviceId: property.smart_lock_id,
-      name: "HFE-OneTime",
-      isOneTimeUse: true,
-      // Required alongside is_one_time_use for "online" locks like this
-      // account's Igloohome devices (confirmed live) - the tradeoff is
-      // the PIN isn't assigned synchronously, so poll briefly for it
-      // below rather than trusting the create response's (null) code.
-      isOfflineAccessCode: true,
-    });
+    // Lock brands disagree on this, confirmed live against two real
+    // locks on 2026-09-18: an Igloohome device rejects is_one_time_use
+    // outright unless the code is also offline ("Cannot set
+    // is_one_time_use for online codes"), while a Kwikset device
+    // rejects offline codes entirely ("Offline Access codes not
+    // supported on device"). Rather than guess per manufacturer, try
+    // the plain way first and only retry with is_offline_access_code if
+    // that specific error comes back.
+    let accessCode;
+    try {
+      accessCode = await createSeamAccessCode(apiKey, {
+        deviceId: property.smart_lock_id,
+        name: "HFE-OneTime",
+        isOneTimeUse: true,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Cannot set is_one_time_use for online codes")) {
+        accessCode = await createSeamAccessCode(apiKey, {
+          deviceId: property.smart_lock_id,
+          name: "HFE-OneTime",
+          isOneTimeUse: true,
+          isOfflineAccessCode: true,
+        });
+      } else {
+        throw error;
+      }
+    }
 
+    // An offline code (the fallback path above) doesn't get its PIN
+    // assigned synchronously - poll briefly rather than trusting a null
+    // `code` on the create response.
     for (let attempt = 0; attempt < 6 && !accessCode.code; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       accessCode = await getSeamAccessCode(apiKey, accessCode.access_code_id);
@@ -490,6 +506,14 @@ export async function issueOneTimeCode(propertyId: string): Promise<string> {
       },
     });
   } catch (error) {
+    // Confirmed live 2026-09-18 against a real Kwikset lock: some
+    // devices reject is_one_time_use both with and without
+    // is_offline_access_code (the fallback above), meaning they don't
+    // support one-time-use codes via Seam at all - not fixable from
+    // here. Give a clear next step instead of a raw Seam string.
+    if (error instanceof Error && error.message.includes("Offline Access codes not supported on device")) {
+      return "This lock doesn't support one-time-use codes at all. Use \"Add code\" on this lock's details page instead - a regular code you delete manually once it's no longer needed.";
+    }
     return error instanceof Error ? error.message : "Seam request failed.";
   }
 
