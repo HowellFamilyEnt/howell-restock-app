@@ -9,6 +9,19 @@
 
 const SEAM_BASE_URL = "https://connect.getseam.com";
 
+// Carries Seam's own machine-readable `error.type` (e.g.
+// "offline_access_code_immutable") alongside the human message, so
+// callers can branch on a specific known failure instead of pattern
+// matching a raw error string.
+export class SeamApiError extends Error {
+  type: string | null;
+  constructor(message: string, type: string | null) {
+    super(message);
+    this.name = "SeamApiError";
+    this.type = type;
+  }
+}
+
 async function seamRequest<T>(apiKey: string, path: string, body: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(`${SEAM_BASE_URL}${path}`, {
     method: "POST",
@@ -21,7 +34,18 @@ async function seamRequest<T>(apiKey: string, path: string, body: Record<string,
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Seam ${path} failed: ${res.status} ${text.slice(0, 200)}`);
+    let type: string | null = null;
+    let message = text.slice(0, 200);
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed?.error?.type) {
+        type = parsed.error.type;
+        message = parsed.error.message ?? message;
+      }
+    } catch {
+      // Not JSON - fall back to the raw text already captured above.
+    }
+    throw new SeamApiError(`Seam ${path} failed: ${res.status} ${message}`, type);
   }
 
   return (await res.json()) as T;

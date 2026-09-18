@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSeamApiKey } from "@/lib/settings";
-import { createSeamAccessCode, deleteSeamAccessCode } from "@/lib/seam";
+import { createSeamAccessCode, deleteSeamAccessCode, SeamApiError } from "@/lib/seam";
 
 export async function addLockAccessCode(
   deviceId: string,
@@ -37,9 +37,15 @@ export async function deleteLockAccessCode(
   try {
     await deleteSeamAccessCode(apiKey, accessCodeId);
   } catch (error) {
-    // Some codes set outside Seam (manufacturer app, keypad) can't
-    // always be removed via the API depending on the lock brand - this
-    // surfaces that instead of silently doing nothing.
+    // "offline_access_code_immutable": confirmed live 2026-09-18 - Seam
+    // never allows deleting an offline (e.g. one-time-use) code once
+    // it's fully set, on any lock. Not fixable from here - the code
+    // stays live until it's actually used once. Anything else (a code
+    // set outside Seam entirely, via the manufacturer's own app or
+    // keypad) still surfaces as-is rather than silently doing nothing.
+    if (error instanceof SeamApiError && error.type === "offline_access_code_immutable") {
+      return "This is a one-time-use code, which Seam doesn't allow deleting once set. It'll disappear on its own the first time it's actually used.";
+    }
     return error instanceof Error ? error.message : "Couldn't delete this code.";
   }
 
