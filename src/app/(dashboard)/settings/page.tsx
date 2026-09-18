@@ -77,9 +77,9 @@ export default async function SettingsPage() {
         <h2 className="mb-1 text-sm font-semibold text-gray-900">Guest contact info</h2>
         <p className="mb-4 text-sm text-gray-500">
           Shown in the &ldquo;Contact us&rdquo; section at the bottom of every property&apos;s guest
-          portal — one shared set for all properties, not per-property. A header message, then three
-          contact categories (General Inquiry, Maintenance, After Hours), each with its own name and
-          phone number.
+          portal — one shared set for all properties, not per-property. A header message, then four
+          contact categories (General Inquiry, Maintenance, After Hours, Cleaning Team), each with its
+          own name and phone number.
         </p>
         <CredentialForm
           fields={[
@@ -120,6 +120,17 @@ export default async function SettingsPage() {
               name: "guest_contact_afterhours_phone",
               label: "After Hours — Phone",
               masked: settings?.guest_contact_afterhours_phone ?? null,
+              placeholder: "+15551234567",
+            },
+            {
+              name: "guest_contact_cleaning_name",
+              label: "Cleaning Team — Name",
+              masked: settings?.guest_contact_cleaning_name ?? null,
+            },
+            {
+              name: "guest_contact_cleaning_phone",
+              label: "Cleaning Team — Phone",
+              masked: settings?.guest_contact_cleaning_phone ?? null,
               placeholder: "+15551234567",
             },
           ]}

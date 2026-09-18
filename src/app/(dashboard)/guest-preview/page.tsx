@@ -46,6 +46,8 @@ export default async function GuestPreviewPage({
         guest_contact_maintenance_phone: true,
         guest_contact_afterhours_name: true,
         guest_contact_afterhours_phone: true,
+        guest_contact_cleaning_name: true,
+        guest_contact_cleaning_phone: true,
         guest_portal_accent_color: true,
       },
     }),
@@ -96,6 +98,10 @@ export default async function GuestPreviewPage({
                 afterHours: {
                   name: contactSettings.guest_contact_afterhours_name,
                   phone: contactSettings.guest_contact_afterhours_phone,
+                },
+                cleaning: {
+                  name: contactSettings.guest_contact_cleaning_name,
+                  phone: contactSettings.guest_contact_cleaning_phone,
                 },
               }
             : null

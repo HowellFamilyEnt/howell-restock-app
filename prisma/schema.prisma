@@ -391,9 +391,9 @@ model IntegrationSettings {
   // every property, editable from Settings rather than per-property since
   // it's the same office/office lines for everyone. A header message
   // (e.g. steering guests to message through the booking portal first)
-  // plus three fixed contact categories, each its own name + phone -
+  // plus four fixed contact categories, each its own name + phone -
   // simple fixed fields rather than a dynamic list since there are
-  // always exactly these three.
+  // always exactly these four.
   guest_contact_header             String?
   guest_contact_general_name       String?
   guest_contact_general_phone      String?
@@ -401,6 +401,8 @@ model IntegrationSettings {
   guest_contact_maintenance_phone  String?
   guest_contact_afterhours_name    String?
   guest_contact_afterhours_phone   String?
+  guest_contact_cleaning_name      String?
+  guest_contact_cleaning_phone     String?
   // Accent color for the guest portal (buttons, section badges, the
   // numbered check-in/parking step markers) - hex, picked via a native
   // <input type="color"> same as Team member colors. Falls back to the
@@ -551,6 +553,16 @@ model GuestAccessCode {
   ends_at                 DateTime?
   status                  String? // Seam's display_status, cached
   error                   String?
+  // Set true once the check-lock-health cron confirms Seam actually
+  // finished setting this code on the device (status "set", no errors) -
+  // creation only ever gets an immediately-optimistic status back, so
+  // without this a code that later fails (e.g. a duplicate-PIN collision
+  // on an Igloohome device) would otherwise look "Issuing" forever and
+  // never get retried. retry_count caps how many times a failed code
+  // gets automatically recreated with a fresh value before giving up and
+  // just leaving `error` for a human to see.
+  confirmed_active        Boolean   @default(false)
+  retry_count             Int       @default(0)
   createdAt               DateTime  @default(now())
 
   @@map("guest_access_codes")
@@ -608,6 +620,10 @@ model TeamAccessCode {
   code                String?
   status               String?
   error                String?
+  // Same async-failure detection/retry as GuestAccessCode - see its
+  // field comments.
+  confirmed_active     Boolean   @default(false)
+  retry_count          Int       @default(0)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

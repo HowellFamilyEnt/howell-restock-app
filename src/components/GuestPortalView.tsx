@@ -48,6 +48,7 @@ export type GuestPortalContact = {
   general: GuestContactPerson;
   maintenance: GuestContactPerson;
   afterHours: GuestContactPerson;
+  cleaning: GuestContactPerson;
 };
 
 // The actual guest-facing layout - shared by the real portal
@@ -249,7 +250,11 @@ export default function GuestPortalView({
       {upgradesSection}
 
       {contact &&
-        (contact.header || contact.general.name || contact.maintenance.name || contact.afterHours.name) && (
+        (contact.header ||
+          contact.general.name ||
+          contact.maintenance.name ||
+          contact.afterHours.name ||
+          contact.cleaning.name) && (
           <Section title="Contact us">
             <div className="space-y-4">
               {contact.header && <p className="text-sm text-gray-600">{contact.header}</p>}
@@ -258,6 +263,7 @@ export default function GuestPortalView({
                 { title: "General Inquiry", person: contact.general },
                 { title: "Maintenance", person: contact.maintenance },
                 { title: "After Hours", person: contact.afterHours },
+                { title: "Cleaning Team", person: contact.cleaning },
               ].map(
                 ({ title, person }) =>
                   (person.name || person.phone) && (

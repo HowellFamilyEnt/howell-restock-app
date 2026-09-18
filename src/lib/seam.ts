@@ -59,6 +59,12 @@ export async function listSeamConnectedAccounts(apiKey: string): Promise<SeamCon
   return data.connected_accounts ?? [];
 }
 
+export type SeamAccessCodeError = {
+  message: string;
+  error_code?: string;
+  created_at?: string;
+};
+
 export type SeamAccessCode = {
   access_code_id: string;
   code: string | null;
@@ -70,7 +76,20 @@ export type SeamAccessCode = {
   starts_at?: string | null;
   ends_at?: string | null;
   is_managed?: boolean;
+  errors?: SeamAccessCodeError[];
 };
+
+// Confirmed live 2026-09-18 - lets a caller check whether a code that
+// looked fine at creation time (status is only ever optimistic right
+// then) actually finished setting on the device, or failed
+// asynchronously (e.g. error_code "duplicate_code_on_device" on
+// Igloohome locks, discovered live against a real guest code).
+export async function getSeamAccessCode(apiKey: string, accessCodeId: string): Promise<SeamAccessCode> {
+  const data = await seamRequest<{ access_code: SeamAccessCode }>(apiKey, "/access_codes/get", {
+    access_code_id: accessCodeId,
+  });
+  return data.access_code;
+}
 
 export async function createSeamAccessCode(
   apiKey: string,
